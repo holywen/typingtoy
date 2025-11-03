@@ -1,0 +1,34 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="180" height="180" rx="40" fill="#3B82F6"/>
+
+  <!-- Keyboard container -->
+  <rect x="30" y="65" width="120" height="70" rx="8" fill="white" opacity="0.95"/>
+
+  <!-- Top row keys -->
+  <rect x="38" y="73" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="58" y="73" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="78" y="73" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="98" y="73" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="118" y="73" width="16" height="16" rx="3" fill="#3B82F6"/>
+
+  <!-- Middle row keys -->
+  <rect x="38" y="93" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="58" y="93" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="78" y="93" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="98" y="93" width="16" height="16" rx="3" fill="#3B82F6"/>
+  <rect x="118" y="93" width="16" height="16" rx="3" fill="#3B82F6"/>
+
+  <!-- Space bar -->
+  <rect x="58" y="113" width="64" height="16" rx="3" fill="#3B82F6"/>
+
+  <!-- Typing cursor -->
+  <rect x="84" y="45" width="4" height="18" rx="2" fill="#FBBF24">
+    <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Speed indicators -->
+  <circle cx="148" cy="90" r="6" fill="#FBBF24" opacity="0.8"/>
+  <circle cx="155" cy="80" r="4" fill="#FBBF24" opacity="0.6"/>
+  <circle cx="155" cy="100" r="4" fill="#FBBF24" opacity="0.6"/>
+</svg>

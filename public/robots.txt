@@ -1,0 +1,26 @@
+# Robots.txt for Typing Toy
+# Allow all search engines to crawl the site
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+# Update this URL when deploying to production
+Sitemap: https://typingtoy.444666.best/sitemap.xml
+
+# Crawl delay (optional - adjust based on server capacity)
+Crawl-delay: 1
+
+# Disallow API routes from indexing
+Disallow: /api/
+
+# Allow important pages
+Allow: /
+Allow: /lessons
+Allow: /lessons/*
+Allow: /test
+Allow: /practice
+Allow: /progress
+
+# Block authentication pages if any
+Disallow: /auth/
