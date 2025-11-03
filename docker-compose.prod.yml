@@ -3,6 +3,8 @@
 services:
   app:
     environment:
+      # MongoDB connection with authentication
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/typingtoy?authSource=admin
       - NODE_ENV=production
     restart: always
     deploy:
