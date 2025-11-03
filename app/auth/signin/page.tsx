@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import HumanCheck from '@/components/HumanCheck';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -13,10 +14,19 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [humanVerified, setHumanVerified] = useState(false);
+  const [captchaError, setCaptchaError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setCaptchaError('');
+
+    if (!humanVerified) {
+      setCaptchaError(t.auth.errors.invalidCaptcha);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -87,6 +97,11 @@ export default function SignInPage() {
                 placeholder="••••••••"
               />
             </div>
+
+            <HumanCheck
+              onVerify={setHumanVerified}
+              error={captchaError}
+            />
 
             <button
               type="submit"

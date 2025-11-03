@@ -45,6 +45,8 @@ export default {
     password: 'Password',
     confirmPassword: 'Confirm Password',
     name: 'Name',
+    humanCheck: 'Human Verification',
+    humanCheckPlaceholder: 'Enter the answer',
     signInButton: 'Sign In',
     signUpButton: 'Sign Up',
     signingIn: 'Signing in...',
@@ -63,6 +65,7 @@ export default {
       userExists: 'User already exists',
       registrationFailed: 'Registration failed',
       errorOccurred: 'An error occurred. Please try again.',
+      invalidCaptcha: 'Incorrect answer. Please try again.',
     },
   },
   userMenu: {

@@ -45,6 +45,8 @@ export default {
     password: 'Mot de Passe',
     confirmPassword: 'Confirmer le Mot de Passe',
     name: 'Nom',
+    humanCheck: 'Vérification Humaine',
+    humanCheckPlaceholder: 'Entrez la réponse',
     signInButton: 'Se Connecter',
     signUpButton: 'S\'inscrire',
     signingIn: 'Connexion en cours...',
@@ -63,6 +65,7 @@ export default {
       userExists: 'L\'utilisateur existe déjà',
       registrationFailed: 'L\'inscription a échoué',
       errorOccurred: 'Une erreur s\'est produite. Veuillez réessayer',
+      invalidCaptcha: 'Réponse incorrecte. Veuillez réessayer',
     },
   },
   userMenu: {

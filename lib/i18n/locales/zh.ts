@@ -45,6 +45,8 @@ export default {
     password: '密码',
     confirmPassword: '确认密码',
     name: '姓名',
+    humanCheck: '人机验证',
+    humanCheckPlaceholder: '请输入答案',
     signInButton: '登录',
     signUpButton: '注册',
     signingIn: '登录中...',
@@ -63,6 +65,7 @@ export default {
       userExists: '用户已存在',
       registrationFailed: '注册失败',
       errorOccurred: '发生错误，请重试',
+      invalidCaptcha: '答案错误，请重试',
     },
   },
   userMenu: {

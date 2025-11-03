@@ -45,6 +45,8 @@ export default {
     password: 'รหัสผ่าน',
     confirmPassword: 'ยืนยันรหัสผ่าน',
     name: 'ชื่อ',
+    humanCheck: 'ยืนยันว่าเป็นมนุษย์',
+    humanCheckPlaceholder: 'ใส่คำตอบ',
     signInButton: 'เข้าสู่ระบบ',
     signUpButton: 'สมัครสมาชิก',
     signingIn: 'กำลังเข้าสู่ระบบ...',
@@ -63,6 +65,7 @@ export default {
       userExists: 'ผู้ใช้นี้มีอยู่แล้ว',
       registrationFailed: 'การสมัครล้มเหลว',
       errorOccurred: 'เกิดข้อผิดพลาด กรุณาลองอีกครั้ง',
+      invalidCaptcha: 'คำตอบไม่ถูกต้อง กรุณาลองอีกครั้ง',
     },
   },
   userMenu: {

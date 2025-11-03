@@ -45,6 +45,8 @@ export default {
     password: 'パスワード',
     confirmPassword: 'パスワード確認',
     name: '名前',
+    humanCheck: '人間確認',
+    humanCheckPlaceholder: '答えを入力',
     signInButton: 'ログイン',
     signUpButton: '登録',
     signingIn: 'ログイン中...',
@@ -63,6 +65,7 @@ export default {
       userExists: 'ユーザーはすでに存在します',
       registrationFailed: '登録に失敗しました',
       errorOccurred: 'エラーが発生しました。もう一度お試しください',
+      invalidCaptcha: '答えが間違っています。もう一度お試しください',
     },
   },
   userMenu: {
