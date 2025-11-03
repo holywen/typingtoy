@@ -10,6 +10,7 @@ export default {
     signOut: '退出登录',
     language: '语言',
     settings: '设置',
+    reportIssues: '报告问题',
   },
   home: {
     title: '欢迎使用盲打练习！',

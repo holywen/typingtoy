@@ -10,6 +10,7 @@ export default {
     signOut: 'ออกจากระบบ',
     language: 'ภาษา',
     settings: 'การตั้งค่า',
+    reportIssues: 'รายงานปัญหา',
   },
   home: {
     title: 'ยินดีต้อนรับสู่ Typing Toy!',

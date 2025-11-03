@@ -10,6 +10,7 @@ export default {
     signOut: 'ログアウト',
     language: '言語',
     settings: '設定',
+    reportIssues: '問題を報告',
   },
   home: {
     title: 'タッチタイピング練習へようこそ！',

@@ -10,6 +10,7 @@ export default {
     signOut: 'Sign Out',
     language: 'Language',
     settings: 'Settings',
+    reportIssues: 'Report Issues',
   },
   home: {
     title: 'Welcome to Typing Toy!',

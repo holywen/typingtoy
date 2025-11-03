@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SessionProvider from "@/components/SessionProvider";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: {
@@ -74,10 +75,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="flex flex-col min-h-screen">
         <SessionProvider>
           <LanguageProvider>
-            {children}
+            <div className="flex-1">
+              {children}
+            </div>
+            <Footer />
           </LanguageProvider>
         </SessionProvider>
       </body>

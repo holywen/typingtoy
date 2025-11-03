@@ -10,6 +10,7 @@ export default {
     signOut: 'Se Déconnecter',
     language: 'Langue',
     settings: 'Paramètres',
+    reportIssues: 'Signaler des Problèmes',
   },
   home: {
     title: 'Bienvenue à l\'Étude de la Dactylographie!',

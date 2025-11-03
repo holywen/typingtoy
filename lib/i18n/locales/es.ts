@@ -10,6 +10,7 @@ export default {
     signOut: 'Cerrar Sesión',
     language: 'Idioma',
     settings: 'Configuración',
+    reportIssues: 'Reportar Problemas',
   },
   home: {
     title: '¡Bienvenido a Estudio de Mecanografía!',
