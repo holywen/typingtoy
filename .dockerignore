@@ -39,7 +39,14 @@ Thumbs.db
 # Docker
 Dockerfile
 docker-compose.yml
+docker-compose.prod.yml
 .dockerignore
+
+# Data directories (should not be copied into image)
+mongodb-data
+mongodb-config
+app-data
+redis-data
 
 # Documentation
 README.md
