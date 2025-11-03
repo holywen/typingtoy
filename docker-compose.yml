@@ -89,9 +89,25 @@ networks:
 volumes:
   mongodb-data:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./mongodb-data
   mongodb-config:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./mongodb-config
   app-data:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./app-data
   # redis-data:
   #   driver: local
+  #   driver_opts:
+  #      type: none
+  #      o: bind
+  #      device: ./redis-data
