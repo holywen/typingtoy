@@ -70,6 +70,41 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     }
   });
 
+  // Helper function to broadcast online players list
+  const broadcastOnlinePlayers = async () => {
+    try {
+      const { RoomManager } = await import('./roomManager');
+      const onlinePlayerIds = await redis.smembers('online:players');
+
+      const players = await Promise.all(
+        onlinePlayerIds.map(async (pid) => {
+          const socketId = await redis.get(`player:${pid}:socketId`);
+          const socket = io.sockets.sockets.get(socketId || '');
+          const displayName = socket?.data?.displayName || 'Unknown';
+
+          // Check player status
+          const room = await RoomManager.getRoomByPlayerId(pid);
+          let status: 'online' | 'in-game' | 'in-room' = 'online';
+
+          if (room) {
+            status = room.status === 'playing' ? 'in-game' : 'in-room';
+          }
+
+          return {
+            playerId: pid,
+            displayName,
+            status
+          };
+        })
+      );
+
+      // Broadcast to all connected clients
+      io.emit('lobby:players', { players });
+    } catch (error) {
+      console.error('Error broadcasting online players:', error);
+    }
+  };
+
   // Connection handler
   io.on('connection', async (socket: TypedSocket) => {
     const { playerId, displayName } = socket.data;
@@ -79,18 +114,18 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     try {
       const { RoomManager } = await import('./roomManager');
       const existingRoom = await RoomManager.getRoomByPlayerId(playerId);
-      
+
       if (existingRoom) {
         console.log(`🧹 Cleaning up stale room membership for ${displayName}`);
         await RoomManager.leaveRoom(existingRoom.roomId, playerId);
-        
+
         // Notify others in the room if it still exists
         const room = await RoomManager.getRoom(existingRoom.roomId);
         if (room) {
           io.to(existingRoom.roomId).emit('room:updated', { room });
-          io.to(existingRoom.roomId).emit('player:left', { 
-            roomId: existingRoom.roomId, 
-            playerId 
+          io.to(existingRoom.roomId).emit('player:left', {
+            roomId: existingRoom.roomId,
+            playerId
           });
         } else {
           io.emit('room:deleted', { roomId: existingRoom.roomId });
@@ -106,6 +141,9 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
 
     // Emit connection confirmation
     socket.emit('player:connected', { playerId });
+
+    // Broadcast updated online players list
+    await broadcastOnlinePlayers();
 
     // Handle player identification
     socket.on('player:identify', (data) => {
@@ -158,6 +196,8 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
           socket.data.inMatchmaking = false;
           socket.data.matchmakingGameType = undefined;
         }
+        // Broadcast updated online players list
+        await broadcastOnlinePlayers();
       } catch (error) {
         console.error(`Error during disconnect cleanup for ${displayName}:`, error);
       }
