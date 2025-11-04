@@ -4,6 +4,8 @@ import { TypedServer, TypedSocket } from '../socketServer';
 import { RoomManager } from '../roomManager';
 import { FallingBlocksMultiplayer } from '@/lib/game-engine/FallingBlocksMultiplayer';
 import { BlinkMultiplayer } from '@/lib/game-engine/BlinkMultiplayer';
+import { SpeedRaceMultiplayer } from '@/lib/game-engine/SpeedRaceMultiplayer';
+import { FallingWordsMultiplayer } from '@/lib/game-engine/FallingWordsMultiplayer';
 import { BaseMultiplayerGame } from '@/lib/game-engine/BaseMultiplayerGame';
 import type { PlayerInput } from '@/lib/game-engine/GameState';
 import { AntiCheatValidator } from '../antiCheat';
@@ -46,6 +48,25 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
     switch (gameType) {
       case 'blink':
         game = new BlinkMultiplayer({
+          roomId,
+          players: playerList,
+          seed,
+          settings: gameConfig,
+        });
+        break;
+
+      case 'speed-race':
+      case 'typing-walk':
+        game = new SpeedRaceMultiplayer({
+          roomId,
+          players: playerList,
+          seed,
+          settings: gameConfig,
+        });
+        break;
+
+      case 'falling-words':
+        game = new FallingWordsMultiplayer({
           roomId,
           players: playerList,
           seed,

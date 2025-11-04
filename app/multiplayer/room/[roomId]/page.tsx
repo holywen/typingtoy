@@ -8,6 +8,8 @@ import { getDeviceIdentity } from '@/lib/services/deviceId';
 import ChatBox from '@/components/lobby/ChatBox';
 import MultiplayerFallingBlocks from '@/components/multiplayer/MultiplayerFallingBlocks';
 import MultiplayerBlink from '@/components/multiplayer/MultiplayerBlink';
+import MultiplayerSpeedRace from '@/components/multiplayer/MultiplayerSpeedRace';
+import MultiplayerFallingWords from '@/components/multiplayer/MultiplayerFallingWords';
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -250,6 +252,27 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       case 'blink':
         return (
           <MultiplayerBlink
+            roomId={roomId}
+            playerId={playerId}
+            displayName={displayName}
+            onGameEnd={handleGameEnd}
+          />
+        );
+
+      case 'speed-race':
+      case 'typing-walk':
+        return (
+          <MultiplayerSpeedRace
+            roomId={roomId}
+            playerId={playerId}
+            displayName={displayName}
+            onGameEnd={handleGameEnd}
+          />
+        );
+
+      case 'falling-words':
+        return (
+          <MultiplayerFallingWords
             roomId={roomId}
             playerId={playerId}
             displayName={displayName}

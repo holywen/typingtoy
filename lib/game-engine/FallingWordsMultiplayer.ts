@@ -1,0 +1,465 @@
+// Falling Words Multiplayer Game Engine
+// All players see the same word sequence falling, compete for completion speed
+
+import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
+import { PlayerInput, InputResult } from './PlayerState';
+import { GameSettings, SerializedGameState, serializeGameState } from './GameState';
+
+/**
+ * Falling word data structure
+ */
+export interface FallingWord {
+  id: number;
+  word: string;
+  x: number;              // Position percentage (0-100)
+  y: number;              // Position percentage (0-100)
+  speed: number;          // Fall speed (percentage per update)
+  spawnTime: number;      // When word was spawned (server timestamp)
+}
+
+/**
+ * Falling Words-specific game state (shared by all players)
+ */
+export interface FallingWordsGameState {
+  words: FallingWord[];              // Currently falling words
+  wordPool: string[];                // Pre-generated word pool for consistency
+  nextWordId: number;                // ID for next word to spawn
+  spawnInterval: number;             // Milliseconds between spawns
+  fallSpeed: number;                 // Base fall speed
+  maxWordsOnScreen: number;          // Max concurrent words
+  lastSpawnTime: number;             // Last word spawn timestamp
+  gameSpeed: number;                 // Game difficulty multiplier
+  bottomThreshold: number;           // Y position where words are "lost" (percentage)
+  nextWordIndex: number;             // Index in wordPool for next spawn
+}
+
+/**
+ * Falling Words-specific player data (per-player progress)
+ */
+export interface FallingWordsPlayerData {
+  currentWordId: number | null;     // Word player is currently typing
+  typedProgress: string;             // Characters typed so far for current word
+  wordsCompleted: number;            // Total words completed
+  wordsLost: number;                 // Words that fell off screen
+  maxLostWords: number;              // Game over threshold
+}
+
+/**
+ * Falling Words Multiplayer Game
+ *
+ * Mechanics:
+ * - All players see the SAME words falling in the SAME positions
+ * - Each player types words independently at their own pace
+ * - Players can work on different words simultaneously
+ * - Words fall at a steady rate (faster each level)
+ * - If a word reaches the bottom = player loses it (counts toward game over)
+ * - Game over when player loses too many words (e.g., 5 words)
+ * - Winner is last player standing OR highest score when time runs out
+ */
+export class FallingWordsMultiplayer extends BaseMultiplayerGame {
+  protected gameType: string = 'falling-words';
+  private readonly UPDATE_INTERVAL = 50; // Update words every 50ms
+  private lastUpdateTime: number = 0;
+
+  protected onGameInit(settings: GameSettings): void {
+    const characters = settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const maxLostWords = 5; // Lose after 5 words fall off screen
+
+    // Generate word pool using seeded RNG for consistency
+    const wordPool = this.generateWordPool(characters, 50);
+
+    // Initialize game-specific state
+    const wordsState: FallingWordsGameState = {
+      words: [],
+      wordPool,
+      nextWordId: 1,
+      spawnInterval: 2500, // Spawn word every 2.5 seconds
+      fallSpeed: 0.5,      // Base speed: 0.5% per update (50ms)
+      maxWordsOnScreen: 8,
+      lastSpawnTime: 0,
+      gameSpeed: 1.0,
+      bottomThreshold: 90, // Words lost if y >= 90%
+      nextWordIndex: 0,
+    };
+
+    this.gameState.gameSpecificState = wordsState;
+
+    // Initialize player-specific data
+    for (const [playerId, playerState] of this.gameState.players) {
+      const playerData: FallingWordsPlayerData = {
+        currentWordId: null,
+        typedProgress: '',
+        wordsCompleted: 0,
+        wordsLost: 0,
+        maxLostWords,
+      };
+
+      playerState.gameSpecificData = playerData;
+      playerState.lives = maxLostWords;
+    }
+
+    console.log(`📝 Falling Words game initialized for room ${this.roomId}`);
+    console.log(`   Word pool size: ${wordPool.length}`);
+    console.log(`   Max lost words: ${maxLostWords}`);
+  }
+
+  /**
+   * Generate word pool using seeded RNG for consistency across all players
+   */
+  private generateWordPool(characters: string[], count: number): string[] {
+    const words: string[] = [];
+    const charSet = new Set(characters);
+
+    // If we have common keys, try to use real words
+    const commonWords = [
+      'type', 'code', 'word', 'game', 'fast', 'quick', 'jump', 'play',
+      'test', 'skill', 'speed', 'learn', 'master', 'focus', 'key',
+      'text', 'letter', 'typing', 'finger', 'hand', 'race', 'win',
+    ];
+
+    // Filter words that only use available characters
+    const validWords = commonWords.filter(word =>
+      word.split('').every(char => charSet.has(char))
+    );
+
+    // Use valid words if we have enough
+    if (validWords.length >= count / 2) {
+      // Use valid words and fill rest with generated words
+      for (let i = 0; i < count; i++) {
+        if (i < validWords.length) {
+          words.push(validWords[i]);
+        } else {
+          // Generate random word
+          const length = Math.floor(this.rng.next() * 3) + 3; // 3-5 letters
+          let word = '';
+          for (let j = 0; j < length; j++) {
+            word += characters[Math.floor(this.rng.next() * characters.length)];
+          }
+          words.push(word);
+        }
+      }
+    } else {
+      // Generate all words randomly
+      for (let i = 0; i < count; i++) {
+        const length = Math.floor(this.rng.next() * 3) + 3; // 3-5 letters
+        let word = '';
+        for (let j = 0; j < length; j++) {
+          word += characters[Math.floor(this.rng.next() * characters.length)];
+        }
+        words.push(word);
+      }
+    }
+
+    return words;
+  }
+
+  protected onGameStart(): void {
+    this.lastUpdateTime = Date.now();
+    console.log(`📝 Falling Words game started for room ${this.roomId}`);
+  }
+
+  protected updateGameState(deltaTime: number): void {
+    const state = this.gameState.gameSpecificState as FallingWordsGameState;
+    const now = Date.now();
+
+    // Spawn new words periodically
+    if (now - state.lastSpawnTime >= state.spawnInterval &&
+        state.words.length < state.maxWordsOnScreen &&
+        state.nextWordIndex < state.wordPool.length) {
+
+      this.spawnWord();
+      state.lastSpawnTime = now;
+    }
+
+    // Update word positions (every UPDATE_INTERVAL ms)
+    if (now - this.lastUpdateTime >= this.UPDATE_INTERVAL) {
+      this.updateWordPositions();
+      this.lastUpdateTime = now;
+    }
+
+    // Check for words that reached bottom (each player loses them independently)
+    for (const [playerId, playerState] of this.gameState.players) {
+      if (playerState.isFinished) continue;
+
+      const playerData = playerState.gameSpecificData as FallingWordsPlayerData;
+
+      // Check if player has any words that reached bottom
+      const lostWords = state.words.filter(word => word.y >= state.bottomThreshold);
+
+      if (lostWords.length > 0) {
+        // Player loses these words
+        playerData.wordsLost += lostWords.length;
+        playerState.lives = playerData.maxLostWords - playerData.wordsLost;
+
+        console.log(`💀 Player ${playerState.displayName} lost ${lostWords.length} words. Total lost: ${playerData.wordsLost}`);
+
+        // Check if player game over
+        if (playerData.wordsLost >= playerData.maxLostWords) {
+          console.log(`💀 Player ${playerState.displayName} GAME OVER (too many words lost)`);
+          playerState.isFinished = true;
+        }
+      }
+
+      // Remove lost words from game (all players see them removed)
+      state.words = state.words.filter(word => word.y < state.bottomThreshold);
+    }
+
+    // Check if all players finished
+    const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
+    if (allFinished) {
+      console.log(`📝 Falling Words ended - all players finished`);
+      this.gameState.status = 'finished';
+    }
+
+    // Increase difficulty over time (every 15 seconds)
+    const elapsedTime = now - this.gameState.startTime;
+    if (elapsedTime > 0 && elapsedTime % 15000 < this.UPDATE_INTERVAL) {
+      state.gameSpeed += 0.1;
+      state.spawnInterval = Math.max(1500, state.spawnInterval - 100);
+      console.log(`⚡ Difficulty increased! Speed: ${state.gameSpeed.toFixed(1)}x, Spawn: ${state.spawnInterval}ms`);
+    }
+  }
+
+  /**
+   * Spawn a new word at the top of the screen
+   */
+  private spawnWord(): void {
+    const state = this.gameState.gameSpecificState as FallingWordsGameState;
+
+    if (state.nextWordIndex >= state.wordPool.length) {
+      // Cycle back to beginning of word pool
+      state.nextWordIndex = 0;
+    }
+
+    const word = state.wordPool[state.nextWordIndex];
+    const newWord: FallingWord = {
+      id: state.nextWordId++,
+      word,
+      x: this.rng.next() * 70 + 10, // Random X: 10-80%
+      y: 0,
+      speed: state.fallSpeed * state.gameSpeed,
+      spawnTime: Date.now(),
+    };
+
+    state.words.push(newWord);
+    state.nextWordIndex++;
+
+    console.log(`📝 Spawned word "${word}" (ID: ${newWord.id}) at (${newWord.x.toFixed(0)}%, 0%)`);
+  }
+
+  /**
+   * Update positions of all falling words
+   */
+  private updateWordPositions(): void {
+    const state = this.gameState.gameSpecificState as FallingWordsGameState;
+
+    for (const word of state.words) {
+      word.y += word.speed;
+    }
+  }
+
+  handlePlayerInput(playerId: string, input: PlayerInput): InputResult {
+    const playerState = this.gameState.players.get(playerId);
+    if (!playerState) {
+      return { success: false, error: 'Player not found' };
+    }
+
+    if (playerState.isFinished) {
+      return { success: false, error: 'Player already finished' };
+    }
+
+    const state = this.gameState.gameSpecificState as FallingWordsGameState;
+    const playerData = playerState.gameSpecificData as FallingWordsPlayerData;
+
+    // Validate input type
+    if (input.inputType !== 'keystroke' || !input.data?.key) {
+      return { success: false, error: 'Invalid input type' };
+    }
+
+    const key = input.data.key.toLowerCase();
+    const now = Date.now();
+
+    playerState.keystrokeCount++;
+
+    // Find the word that matches this keystroke
+    let targetWord: FallingWord | null = null;
+
+    // If player is currently typing a word, check if key matches next character
+    if (playerData.currentWordId !== null) {
+      targetWord = state.words.find(w => w.id === playerData.currentWordId) || null;
+
+      if (targetWord) {
+        const nextChar = targetWord.word[playerData.typedProgress.length];
+
+        if (key === nextChar) {
+          // Correct character!
+          playerData.typedProgress += key;
+          playerState.correctKeystrokes++;
+
+          // Check if word completed
+          if (playerData.typedProgress === targetWord.word) {
+            // Word completed!
+            playerData.wordsCompleted++;
+            playerState.score += targetWord.word.length * 10;
+
+            // Remove word from game
+            state.words = state.words.filter(w => w.id !== targetWord.id);
+
+            // Reset player's current word
+            playerData.currentWordId = null;
+            playerData.typedProgress = '';
+
+            playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+            console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"! Words: ${playerData.wordsCompleted}`);
+
+            return {
+              success: true,
+              points: targetWord.word.length * 10,
+              feedback: {
+                message: `Completed "${targetWord.word}"!`,
+                type: 'correct',
+              }
+            };
+          }
+
+          playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+          return {
+            success: true,
+            points: 0,
+            feedback: {
+              message: 'Correct!',
+              type: 'correct',
+            }
+          };
+        } else {
+          // Wrong character - cancel current word
+          playerData.currentWordId = null;
+          playerData.typedProgress = '';
+          playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+          console.log(`❌ ${playerState.displayName} made mistake, cancelled word`);
+
+          return {
+            success: false,
+            error: 'Wrong character',
+            feedback: {
+              message: 'Wrong! Word cancelled',
+              type: 'error',
+            }
+          };
+        }
+      }
+    }
+
+    // No current word - find a word starting with this key
+    targetWord = state.words.find(w => w.word[0] === key) || null;
+
+    if (targetWord) {
+      // Start typing this word
+      playerData.currentWordId = targetWord.id;
+      playerData.typedProgress = key;
+      playerState.correctKeystrokes++;
+
+      // Check if single-character word (complete immediately)
+      if (targetWord.word === key) {
+        playerData.wordsCompleted++;
+        playerState.score += targetWord.word.length * 10;
+
+        // Remove word from game
+        state.words = state.words.filter(w => w.id !== targetWord.id);
+
+        playerData.currentWordId = null;
+        playerData.typedProgress = '';
+
+        playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+        console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"!`);
+
+        return {
+          success: true,
+          points: targetWord.word.length * 10,
+          feedback: {
+            message: `Completed "${targetWord.word}"!`,
+            type: 'correct',
+          }
+        };
+      }
+
+      playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+      return {
+        success: true,
+        points: 0,
+        feedback: {
+          message: `Started "${targetWord.word}"`,
+          type: 'correct',
+        }
+      };
+    }
+
+    // No matching word found
+    playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+    return {
+      success: false,
+      error: 'No matching word',
+      feedback: {
+        message: 'No word starts with that letter',
+        type: 'error',
+      }
+    };
+  }
+
+  protected checkWinCondition(): string | null {
+    // Winner is the last player standing OR player with highest score
+    const activePlayers = Array.from(this.gameState.players.entries())
+      .filter(([_, p]) => !p.isFinished);
+
+    if (activePlayers.length === 1) {
+      return activePlayers[0][0]; // Return winner ID
+    }
+
+    // If all finished, find highest score
+    if (activePlayers.length === 0) {
+      let maxScore = -1;
+      let winnerId: string | null = null;
+
+      for (const [playerId, playerState] of this.gameState.players) {
+        if (playerState.score > maxScore) {
+          maxScore = playerState.score;
+          winnerId = playerId;
+        }
+      }
+
+      return winnerId;
+    }
+
+    return null;
+  }
+
+  serialize(): SerializedGameState {
+    const state = this.gameState.gameSpecificState as FallingWordsGameState;
+
+    // Use base serialization
+    const baseState = serializeGameState(this.gameState);
+
+    // Include Falling Words-specific state
+    return {
+      ...baseState,
+      gameSpecificState: {
+        words: state.words,
+        nextWordId: state.nextWordId,
+        spawnInterval: state.spawnInterval,
+        fallSpeed: state.fallSpeed,
+        maxWordsOnScreen: state.maxWordsOnScreen,
+        lastSpawnTime: state.lastSpawnTime,
+        gameSpeed: state.gameSpeed,
+        bottomThreshold: state.bottomThreshold,
+        nextWordIndex: state.nextWordIndex,
+        // Don't send full wordPool to prevent cheating - just current words
+      }
+    };
+  }
+}
