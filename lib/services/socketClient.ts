@@ -17,10 +17,19 @@ export interface SocketClientOptions {
 
 // Initialize socket connection
 export function initSocketClient(options: SocketClientOptions): TypedClientSocket {
+  // If socket exists and is connected, return it
   if (socket && socket.connected) {
     return socket;
   }
 
+  // If socket exists but is disconnected, reconnect it
+  if (socket && !socket.connected) {
+    console.log('🔄 Reconnecting existing socket...');
+    socket.connect();
+    return socket;
+  }
+
+  // Create new socket connection
   const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
 
   socket = io(socketUrl, {

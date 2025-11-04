@@ -25,22 +25,36 @@ export default function MultiplayerPage() {
           displayName: identity.displayName,
         });
 
+        // If already connected, resolve immediately
+        if (socket.connected) {
+          console.log('✅ Socket already connected');
+          setIsConnecting(false);
+          return;
+        }
+
         // Wait for connection
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000);
 
-          socket.on('connect', () => {
+          const onConnect = () => {
             clearTimeout(timeout);
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
             setIsConnecting(false);
             resolve();
-          });
+          };
 
-          socket.on('connect_error', (error) => {
+          const onError = (error: Error) => {
             clearTimeout(timeout);
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
             setConnectionError(error.message);
             setIsConnecting(false);
             reject(error);
-          });
+          };
+
+          socket.on('connect', onConnect);
+          socket.on('connect_error', onError);
         });
       } catch (error) {
         console.error('Failed to initialize:', error);
