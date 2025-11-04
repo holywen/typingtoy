@@ -248,6 +248,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       });
     };
 
+    const handleReturnToLobby = () => {
+      router.push('/multiplayer');
+    };
+
     switch (room?.gameType) {
       case 'blink':
         return (
@@ -256,6 +260,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             playerId={playerId}
             displayName={displayName}
             onGameEnd={handleGameEnd}
+            onReturnToLobby={handleReturnToLobby}
           />
         );
 
@@ -267,6 +272,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             playerId={playerId}
             displayName={displayName}
             onGameEnd={handleGameEnd}
+            onReturnToLobby={handleReturnToLobby}
           />
         );
 
@@ -277,6 +283,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             playerId={playerId}
             displayName={displayName}
             onGameEnd={handleGameEnd}
+            onReturnToLobby={handleReturnToLobby}
           />
         );
 
@@ -288,6 +295,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             playerId={playerId}
             displayName={displayName}
             onGameEnd={handleGameEnd}
+            onReturnToLobby={handleReturnToLobby}
           />
         );
     }

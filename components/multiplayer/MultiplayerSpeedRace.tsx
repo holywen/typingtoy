@@ -13,6 +13,7 @@ interface MultiplayerSpeedRaceProps {
   playerId: string;
   displayName: string;
   onGameEnd: () => void;
+  onReturnToLobby: () => void;
 }
 
 export default function MultiplayerSpeedRace({
@@ -20,6 +21,7 @@ export default function MultiplayerSpeedRace({
   playerId,
   displayName,
   onGameEnd,
+  onReturnToLobby,
 }: MultiplayerSpeedRaceProps) {
   const [gameState, setGameState] = useState<SerializedGameState | null>(null);
   const [playerStates, setPlayerStates] = useState<Map<string, GamePlayerState>>(new Map());
@@ -196,12 +198,20 @@ export default function MultiplayerSpeedRace({
                 })}
               </div>
 
-              <button
-                onClick={onGameEnd}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors"
-              >
-                Return to Lobby
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={onGameEnd}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
+                >
+                  Return to Room
+                </button>
+                <button
+                  onClick={onReturnToLobby}
+                  className="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg transition-colors"
+                >
+                  Return to Lobby
+                </button>
+              </div>
             </div>
           </div>
         )}

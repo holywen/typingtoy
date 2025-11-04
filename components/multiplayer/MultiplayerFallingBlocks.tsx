@@ -18,6 +18,7 @@ interface MultiplayerFallingBlocksProps {
   playerId: string;
   displayName: string;
   onGameEnd: () => void;
+  onReturnToLobby: () => void;
 }
 
 export default function MultiplayerFallingBlocks({
@@ -25,6 +26,7 @@ export default function MultiplayerFallingBlocks({
   playerId,
   displayName,
   onGameEnd,
+  onReturnToLobby,
 }: MultiplayerFallingBlocksProps) {
   const [gameState, setGameState] = useState<SerializedGameState | null>(null);
   const [localBlocks, setLocalBlocks] = useState<FallingBlock[]>([]);
@@ -205,12 +207,20 @@ export default function MultiplayerFallingBlocks({
             ))}
           </div>
 
-          <button
-            onClick={onGameEnd}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-bold text-lg transition-colors"
-          >
-            Back to Room
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onGameEnd}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-colors"
+            >
+              Return to Room
+            </button>
+            <button
+              onClick={onReturnToLobby}
+              className="flex-1 bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg transition-colors"
+            >
+              Return to Lobby
+            </button>
+          </div>
         </div>
       </div>
     );
