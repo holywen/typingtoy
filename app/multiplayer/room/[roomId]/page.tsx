@@ -61,20 +61,36 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     const socket = getSocket();
     if (!socket) return;
 
+    console.log('🚪 Attempting to join room:', roomId);
+
+    // Add timeout to prevent infinite loading
+    const joinTimeout = setTimeout(() => {
+      console.error('⏱️ Room join timeout - retrying...');
+      setError('Connection timeout. Please try again.');
+      setLoading(false);
+    }, 5000); // 5 second timeout
+
     // Emit room join event
     emitSocketEvent('room:join', { roomId }, (response: any) => {
+      clearTimeout(joinTimeout);
+
       if (response.success) {
         console.log('✅ Joined room via socket:', roomId);
         setRoom(response.room);
         const player = response.room.players.find((p: any) => p.playerId === playerId);
         setIsHost(player?.isHost || false);
         setLoading(false);
+        setError(null);
       } else {
         console.error('❌ Failed to join room:', response.error);
         setError(response.error || 'Failed to join room');
         setLoading(false);
       }
     });
+
+    return () => {
+      clearTimeout(joinTimeout);
+    };
   }, [socketConnected, playerId, displayName, roomId]);
 
   // Listen for room updates

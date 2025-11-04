@@ -3,17 +3,14 @@
 
 import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
 import { PlayerInput, InputResult } from './PlayerState';
-import { GameSettings, SerializedGameState } from './GameState';
+import { GameSettings, SerializedGameState, serializeGameState } from './GameState';
 
 /**
  * Blink-specific game state
  */
 export interface BlinkGameState {
-  currentChar: string;           // Current character to type
-  charStartTime: number;          // When current char appeared (server timestamp)
   timeLimit: number;              // Time limit per character (ms)
   charSequence: string[];         // Pre-generated character sequence
-  currentCharIndex: number;       // Current position in sequence
   totalChars: number;             // Total characters in game
   charHistory: {                  // History of which player answered first for each char
     char: string;
@@ -34,6 +31,9 @@ export interface BlinkPlayerData {
   correctAnswers: number;         // Total correct answers
   timeouts: number;               // Number of timed-out characters
   firstAnswers: number;           // Number of times answered first
+  currentCharIndex: number;       // Each player's position in sequence
+  charStartTime: number;          // Each player's character start time
+  currentChar?: string;           // Current character for this player (only in serialized state)
 }
 
 /**
@@ -74,17 +74,14 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
     const sequence: string[] = [];
 
     for (let i = 0; i < totalChars; i++) {
-      const charIndex = Math.floor(this.rng.random() * chars.length);
+      const charIndex = Math.floor(this.rng.next() * chars.length);
       sequence.push(chars[charIndex]);
     }
 
     // Initialize Blink-specific state
     const blinkState: BlinkGameState = {
-      currentChar: sequence[0],
-      charStartTime: 0, // Will be set when game starts
       timeLimit,
       charSequence: sequence,
-      currentCharIndex: 0,
       totalChars,
       charHistory: [],
     };
@@ -102,74 +99,78 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
         correctAnswers: 0,
         timeouts: 0,
         firstAnswers: 0,
+        currentCharIndex: 0,
+        charStartTime: 0, // Will be set when game starts
       } as BlinkPlayerData;
     }
   }
 
   protected onGameStart(): void {
-    const state = this.gameState.gameSpecificState as BlinkGameState;
-    state.charStartTime = Date.now();
+    const now = Date.now();
+    // Set start time for all players
+    for (const [playerId, playerState] of this.gameState.players) {
+      const playerData = playerState.gameSpecificData as BlinkPlayerData;
+      playerData.charStartTime = now;
+    }
     console.log(`🎮 Blink game started for room ${this.roomId}`);
-    console.log(`   First character: ${state.currentChar}`);
   }
 
   protected updateGameState(deltaTime: number): void {
     const state = this.gameState.gameSpecificState as BlinkGameState;
     const now = Date.now();
-    const elapsedSinceChar = now - state.charStartTime;
 
-    // Check if current character timed out
-    if (elapsedSinceChar >= state.timeLimit && state.charStartTime > 0) {
-      // Character timed out - move to next character
-      this.handleCharTimeout();
-    }
-  }
-
-  private handleCharTimeout(): void {
-    const state = this.gameState.gameSpecificState as BlinkGameState;
-
-    console.log(`⏰ Character '${state.currentChar}' timed out (no one answered)`);
-
-    // Mark all players who didn't answer as timed out
-    const currentAnswers = this.charAnswers.get(state.currentCharIndex) || [];
-    const answeredPlayerIds = new Set(currentAnswers.map(a => a.playerId));
-
+    // Check each player's character timeout independently
     for (const [playerId, playerState] of this.gameState.players) {
-      if (!answeredPlayerIds.has(playerId)) {
-        const playerData = playerState.gameSpecificData as BlinkPlayerData;
-        playerData.timeouts++;
-        playerData.streak = 0; // Break streak
+      const playerData = playerState.gameSpecificData as BlinkPlayerData;
+      const elapsedSinceChar = now - playerData.charStartTime;
+
+      // Check if this player's current character timed out
+      if (elapsedSinceChar >= state.timeLimit && playerData.charStartTime > 0) {
+        // Character timed out for this player - move to next character
+        this.handlePlayerCharTimeout(playerId);
       }
     }
-
-    // Record in history
-    state.charHistory.push({
-      char: state.currentChar,
-      fastestPlayer: null,
-      responseTime: state.timeLimit,
-    });
-
-    // Move to next character
-    this.nextCharacter();
   }
 
-  private nextCharacter(): void {
+  private handlePlayerCharTimeout(playerId: string): void {
     const state = this.gameState.gameSpecificState as BlinkGameState;
+    const playerState = this.gameState.players.get(playerId);
+    if (!playerState) return;
 
-    state.currentCharIndex++;
+    const playerData = playerState.gameSpecificData as BlinkPlayerData;
+    const currentChar = state.charSequence[playerData.currentCharIndex];
 
-    // Check if game is over
-    if (state.currentCharIndex >= state.totalChars) {
-      console.log(`🏁 Blink game completed in room ${this.roomId}`);
+    console.log(`⏰ Character '${currentChar}' timed out for player ${playerState.displayName}`);
+
+    // Mark player as timed out
+    playerData.timeouts++;
+    playerData.streak = 0; // Break streak
+
+    // Move player to next character
+    this.movePlayerToNextChar(playerId);
+  }
+
+  private movePlayerToNextChar(playerId: string): void {
+    const state = this.gameState.gameSpecificState as BlinkGameState;
+    const playerState = this.gameState.players.get(playerId);
+    if (!playerState) return;
+
+    const playerData = playerState.gameSpecificData as BlinkPlayerData;
+    playerData.currentCharIndex++;
+
+    // Check if this player finished the game
+    if (playerData.currentCharIndex >= state.totalChars) {
+      console.log(`🏁 Player ${playerState.displayName} completed all characters - GAME OVER!`);
+      // End the game immediately when the first player finishes (race mode)
       this.gameState.status = 'finished';
       return;
     }
 
-    // Set next character
-    state.currentChar = state.charSequence[state.currentCharIndex];
-    state.charStartTime = Date.now();
+    // Set next character start time for this player
+    playerData.charStartTime = Date.now();
 
-    console.log(`   Next character (${state.currentCharIndex + 1}/${state.totalChars}): ${state.currentChar}`);
+    const nextChar = state.charSequence[playerData.currentCharIndex];
+    console.log(`   Player ${playerState.displayName} next character (${playerData.currentCharIndex + 1}/${state.totalChars}): ${nextChar}`);
   }
 
   handlePlayerInput(playerId: string, input: PlayerInput): InputResult {
@@ -185,27 +186,36 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
     const state = this.gameState.gameSpecificState as BlinkGameState;
     const playerData = playerState.gameSpecificData as BlinkPlayerData;
 
+    // Safety check
+    if (!state || !state.charSequence || !playerData) {
+      console.error('❌ Invalid game state:', {
+        hasState: !!state,
+        hasCharSequence: !!state?.charSequence,
+        charSequenceLength: state?.charSequence?.length,
+        hasPlayerData: !!playerData
+      });
+      return { success: false, error: 'Invalid game state' };
+    }
+
     // Validate input type
     if (input.inputType !== 'keystroke' || !input.data?.key) {
       return { success: false, error: 'Invalid input type' };
     }
 
-    const key = input.data.key.toLowerCase();
-    const now = Date.now();
-    const responseTime = now - state.charStartTime;
-
-    // Check if already answered this character
-    const currentAnswers = this.charAnswers.get(state.currentCharIndex) || [];
-    if (currentAnswers.some(a => a.playerId === playerId)) {
-      return { success: false, error: 'Already answered this character' };
+    // Check if player already finished
+    if (playerData.currentCharIndex >= state.totalChars) {
+      return { success: false, error: 'Already completed all characters' };
     }
 
-    // Check correctness
-    const correct = key === state.currentChar;
+    const key = input.data.key.toLowerCase();
+    const now = Date.now();
+    const responseTime = now - playerData.charStartTime;
 
-    // Record answer
-    currentAnswers.push({ playerId, responseTime, correct });
-    this.charAnswers.set(state.currentCharIndex, currentAnswers);
+    // Get player's current character
+    const currentChar = state.charSequence[playerData.currentCharIndex];
+
+    // Check correctness
+    const correct = key === currentChar;
 
     if (correct) {
       // Correct answer!
@@ -216,26 +226,13 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       playerData.totalResponseTime += responseTime;
       playerData.avgResponseTime = playerData.totalResponseTime / playerData.correctAnswers;
 
-      // Calculate points based on ranking (first, second, third, etc.)
-      const correctAnswers = currentAnswers.filter(a => a.correct);
-      const ranking = correctAnswers.length;
-
-      let points = 0;
+      // Calculate points based on speed and streak
+      let points = 100;
       let bonus = 0;
 
-      if (ranking === 1) {
-        points = 100;
-        playerData.firstAnswers++;
-        // Speed bonus for first answer (up to 50 bonus points)
-        const speedRatio = 1 - (responseTime / state.timeLimit);
-        bonus = Math.floor(speedRatio * 50);
-      } else if (ranking === 2) {
-        points = 50;
-      } else if (ranking === 3) {
-        points = 30;
-      } else {
-        points = 10;
-      }
+      // Speed bonus (up to 50 bonus points)
+      const speedRatio = 1 - (responseTime / state.timeLimit);
+      bonus = Math.floor(speedRatio * 50);
 
       // Streak bonus (10 points per consecutive correct)
       if (playerData.streak >= 3) {
@@ -250,23 +247,16 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       playerState.correctKeystrokes++;
       playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
-      console.log(`✅ ${playerState.displayName} answered correctly! Rank #${ranking}, +${totalPoints} points (${points} base + ${bonus} bonus), streak: ${playerData.streak}`);
+      console.log(`✅ ${playerState.displayName} answered correctly! +${totalPoints} points (${points} base + ${bonus} bonus), streak: ${playerData.streak}`);
 
-      // If first correct answer, record in history and move to next char
-      if (ranking === 1) {
-        state.charHistory.push({
-          char: state.currentChar,
-          fastestPlayer: playerId,
-          responseTime,
-        });
-        this.nextCharacter();
-      }
+      // Move this player to next character
+      this.movePlayerToNextChar(playerId);
 
       return {
         success: true,
         points: totalPoints,
         feedback: {
-          message: `Rank #${ranking}! +${totalPoints} points`,
+          message: `Correct! +${totalPoints} points`,
           type: 'correct',
           details: {
             basePoints: points,
@@ -283,7 +273,7 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
       playerData.streak = 0; // Break streak
 
-      console.log(`❌ ${playerState.displayName} answered incorrectly (pressed '${key}' instead of '${state.currentChar}')`);
+      console.log(`❌ ${playerState.displayName} answered incorrectly (pressed '${key}' instead of '${currentChar}')`);
 
       return {
         success: false,
@@ -292,7 +282,7 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
           message: 'Wrong! Streak broken',
           type: 'error',
           details: {
-            expected: state.currentChar,
+            expected: currentChar,
             actual: key,
           }
         }
@@ -322,20 +312,36 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
   }
 
   serialize(): SerializedGameState {
-    const baseState = super.serialize();
     const blinkState = this.gameState.gameSpecificState as BlinkGameState;
+
+    // Serialize base state using the helper function
+    const baseState = serializeGameState(this.gameState);
+
+    // Add currentChar to each player's gameSpecificData
+    const playersWithCurrentChar: Record<string, any> = {};
+    Object.entries(baseState.players).forEach(([playerId, player]) => {
+      const playerData = player.gameSpecificData as BlinkPlayerData;
+      const currentChar = blinkState.charSequence[playerData.currentCharIndex];
+
+      playersWithCurrentChar[playerId] = {
+        ...player,
+        gameSpecificData: {
+          ...playerData,
+          currentChar, // Add current character for this player
+        }
+      };
+    });
 
     // Include Blink-specific state but hide future characters
     return {
       ...baseState,
+      players: playersWithCurrentChar,
       gameSpecificState: {
-        currentChar: blinkState.currentChar,
-        charStartTime: blinkState.charStartTime,
         timeLimit: blinkState.timeLimit,
-        currentCharIndex: blinkState.currentCharIndex,
         totalChars: blinkState.totalChars,
         charHistory: blinkState.charHistory,
         // Don't send charSequence to prevent cheating
+        // currentChar is now in each player's gameSpecificData
       }
     };
   }

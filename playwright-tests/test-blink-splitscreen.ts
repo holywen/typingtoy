@@ -75,24 +75,41 @@ async function testBlinkSplitScreen() {
     const roomId = url1.split('/multiplayer/room/')[1];
     console.log(`✅ Room ID: ${roomId}\n`);
 
-    // Step 7: Player 2 selects Blink game type
+    // Step 7: Player 2 selects Blink game type and joins
     console.log('📍 Step 7: Player 2 - Select Blink game type');
     const blinkButton2 = page2.locator('button:has-text("Blink")');
     await blinkButton2.waitFor({ timeout: 5000 });
     await blinkButton2.click();
     await page2.waitForTimeout(500);
-    console.log('✅ Blink game type selected for Player 2\n');
+    console.log('✅ Player 2 selected Blink\n');
 
-    // Step 8: Player 2 joins the room
-    console.log('📍 Step 8: Player 2 - Join the room');
-    await page2.waitForTimeout(2000); // Wait for room to appear in list
+    // Step 8: Player 2 waits for room list to update and joins Player 1's room
+    console.log('📍 Step 8: Player 2 - Wait for room list to update and click Join');
 
-    // Look for the Join button in the available rooms list
+    // Wait for room list to populate (rooms refresh every 5 seconds)
+    await page2.waitForTimeout(3000);
+
+    // Look for the room name in the list
+    console.log(`   Looking for room: "Blink Split-Screen Test"`);
+
+    // Find all room cards and look for the one with our room name
+    const roomCards = page2.locator('div').filter({ hasText: 'Blink Split-Screen Test' });
+    const roomCardCount = await roomCards.count();
+    console.log(`   Found ${roomCardCount} matching elements`);
+
+    if (roomCardCount === 0) {
+      // If room not found, wait a bit more and try again
+      console.log('   Room not found, waiting for list to refresh...');
+      await page2.waitForTimeout(3000);
+    }
+
+    // Click the first Join button we find (should be for our room since it's the only Blink room)
     const joinButton = page2.locator('button:has-text("Join")').first();
     await joinButton.waitFor({ timeout: 5000 });
     await joinButton.click();
+
     await page2.waitForTimeout(3000);
-    console.log('✅ Player 2 joined room\n');
+    console.log('✅ Player 2 clicked Join button\n');
 
     // Verify Player 2 is in the room
     const url2 = page2.url();
@@ -145,13 +162,13 @@ async function testBlinkSplitScreen() {
     await startButton.click();
     console.log('✅ Start game clicked\n');
 
-    // Step 12: Wait for countdown
-    console.log('📍 Step 12: Wait for game countdown');
+    // Step 26: Wait for countdown
+    console.log('📍 Step 26: Wait for game countdown');
     await page1.waitForTimeout(4000); // Wait for countdown (usually 3 seconds)
     console.log('✅ Countdown completed\n');
 
-    // Step 13: Verify game started - check for Blink-specific UI elements
-    console.log('📍 Step 13: Verify Blink game started');
+    // Step 26: Verify game started - check for Blink-specific UI elements
+    console.log('📍 Step 26: Verify Blink game started');
 
     // Wait for game to be visible
     await page1.waitForTimeout(1000);
@@ -166,8 +183,8 @@ async function testBlinkSplitScreen() {
       console.log(`⚠️  Character prompt check: Player 1: ${currentChar1}, Player 2: ${currentChar2}\n`);
     }
 
-    // Step 14: Verify split-screen player stats are visible
-    console.log('📍 Step 14: Verify split-screen player stats');
+    // Step 26: Verify split-screen player stats are visible
+    console.log('📍 Step 26: Verify split-screen player stats');
 
     // Look for player stats (Streak, Accuracy, First answers)
     const statsPlayer1 = await page1.locator('text=/Streak|Accuracy|First/i').count();
@@ -182,13 +199,13 @@ async function testBlinkSplitScreen() {
       console.log('⚠️  Some stats might be missing\n');
     }
 
-    // Step 15: Take initial game screenshots
+    // Step 26: Take initial game screenshots
     await page1.screenshot({ path: 'blink-player1-start.png', fullPage: true });
     await page2.screenshot({ path: 'blink-player2-start.png', fullPage: true });
     console.log('📸 Initial game screenshots saved\n');
 
-    // Step 16: Simulate gameplay - type characters
-    console.log('📍 Step 16: Simulate Blink gameplay');
+    // Step 26: Simulate gameplay - type characters
+    console.log('📍 Step 26: Simulate Blink gameplay');
 
     // Type 10 characters rapidly
     const testKeys = ['a', 's', 'd', 'f', 'j', 'k', 'l', 'a', 's', 'd'];
@@ -223,8 +240,8 @@ async function testBlinkSplitScreen() {
 
     console.log('✅ Gameplay simulation completed\n');
 
-    // Step 17: Verify score updates
-    console.log('📍 Step 17: Verify scores were updated');
+    // Step 26: Verify score updates
+    console.log('📍 Step 26: Verify scores were updated');
     await page1.waitForTimeout(1000);
 
     // Check for score elements
@@ -238,8 +255,8 @@ async function testBlinkSplitScreen() {
       console.log('✅ Scores are being displayed\n');
     }
 
-    // Step 18: Verify ranking is shown
-    console.log('📍 Step 18: Verify player ranking');
+    // Step 26: Verify ranking is shown
+    console.log('📍 Step 26: Verify player ranking');
 
     const rank1 = await page1.locator('text=/Rank #\\d+/i').count();
     const rank2 = await page2.locator('text=/Rank #\\d+/i').count();
@@ -251,8 +268,8 @@ async function testBlinkSplitScreen() {
       console.log('✅ Rankings are displayed in split-screen\n');
     }
 
-    // Step 19: Check for streak indicators
-    console.log('📍 Step 19: Check streak indicators');
+    // Step 26: Check for streak indicators
+    console.log('📍 Step 26: Check streak indicators');
 
     const streakText1 = await page1.locator('text=/Streak|\\d+/i').count();
     const streakText2 = await page2.locator('text=/Streak|\\d+/i').count();
@@ -260,8 +277,8 @@ async function testBlinkSplitScreen() {
     console.log(`   Player 1 streak indicators: ${streakText1}`);
     console.log(`   Player 2 streak indicators: ${streakText2}\n`);
 
-    // Step 20: Verify timer/progress bar
-    console.log('📍 Step 20: Verify timer and progress');
+    // Step 26: Verify timer/progress bar
+    console.log('📍 Step 26: Verify timer and progress');
 
     const progress1 = await page1.locator('text=/Character \\d+/i').count();
     const progress2 = await page2.locator('text=/Character \\d+/i').count();
@@ -273,13 +290,13 @@ async function testBlinkSplitScreen() {
       console.log('✅ Character progress is displayed\n');
     }
 
-    // Step 21: Take final game state screenshots
+    // Step 26: Take final game state screenshots
     await page1.screenshot({ path: 'blink-player1-final.png', fullPage: true });
     await page2.screenshot({ path: 'blink-player2-final.png', fullPage: true });
     console.log('📸 Final game screenshots saved\n');
 
-    // Step 22: Test split-screen visual layout
-    console.log('📍 Step 22: Verify split-screen layout');
+    // Step 26: Test split-screen visual layout
+    console.log('📍 Step 26: Verify split-screen layout');
 
     // Check for "You" indicator showing current player
     const youIndicator1 = await page1.locator('text=/(You)/i').count();
@@ -292,8 +309,8 @@ async function testBlinkSplitScreen() {
       console.log('✅ Current player is clearly marked in split-screen\n');
     }
 
-    // Step 23: Verify response time tracking
-    console.log('📍 Step 23: Check response time display');
+    // Step 26: Verify response time tracking
+    console.log('📍 Step 26: Check response time display');
 
     const responseTime1 = await page1.locator('text=/Response Time|\\d+ms/i').count();
     const responseTime2 = await page2.locator('text=/Response Time|\\d+ms/i').count();
@@ -305,12 +322,12 @@ async function testBlinkSplitScreen() {
       console.log('✅ Response times are being tracked and displayed\n');
     }
 
-    // Step 24: Wait to observe the game for a bit
+    // Step 26: Wait to observe the game for a bit
     console.log('⏸  Keeping browsers open for 10 seconds to observe split-screen gameplay...\n');
     await page1.waitForTimeout(10000);
 
-    // Step 25: Take comprehensive final screenshots
-    console.log('📍 Step 25: Taking comprehensive final screenshots');
+    // Step 26: Take comprehensive final screenshots
+    console.log('📍 Step 26: Taking comprehensive final screenshots');
     await page1.screenshot({
       path: 'blink-splitscreen-player1-complete.png',
       fullPage: true

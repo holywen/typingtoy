@@ -37,23 +37,51 @@ export default function MultiplayerBlink({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
+      console.log('🔍 [Blink Client] Received game state:', {
+        hasGameSpecificState: !!state.gameSpecificState,
+        gameSpecificState: state.gameSpecificState,
+        status: state.status
+      });
+
       setGameState(state);
       setGameStarted(true);
 
       // Update Blink-specific state
       if (state.gameSpecificState) {
         const blinkState = state.gameSpecificState as BlinkGameState;
-        setCurrentChar(blinkState.currentChar);
-        setCharStartTime(blinkState.charStartTime);
         setTimeLimit(blinkState.timeLimit);
-        setCurrentCharIndex(blinkState.currentCharIndex);
         setTotalChars(blinkState.totalChars);
 
-        // Calculate time remaining
-        const now = Date.now();
-        const elapsed = now - blinkState.charStartTime;
-        const remaining = Math.max(0, blinkState.timeLimit - elapsed);
-        setTimeRemaining(remaining);
+        // Get current player's data for per-player progress
+        const currentPlayer = state.players[playerId];
+        if (currentPlayer && currentPlayer.gameSpecificData) {
+          const playerData = currentPlayer.gameSpecificData as BlinkPlayerData;
+
+          console.log('🔍 [Blink Client] Player-specific data:', {
+            currentCharIndex: playerData.currentCharIndex,
+            charStartTime: playerData.charStartTime,
+            hasCharSequence: !!blinkState.charSequence
+          });
+
+          setCurrentCharIndex(playerData.currentCharIndex);
+          setCharStartTime(playerData.charStartTime);
+
+          // Get current character from player data (server sends it)
+          if (playerData.currentChar) {
+            setCurrentChar(playerData.currentChar);
+            console.log('🔍 [Blink Client] Current character for player:', playerData.currentChar);
+          }
+
+          // Calculate time remaining
+          const now = Date.now();
+          const elapsed = now - playerData.charStartTime;
+          const remaining = Math.max(0, blinkState.timeLimit - elapsed);
+          setTimeRemaining(remaining);
+        } else {
+          console.warn('⚠️  [Blink Client] No player-specific data found for current player!');
+        }
+      } else {
+        console.warn('⚠️  [Blink Client] No gameSpecificState in received state!');
       }
 
       // Update player states
@@ -320,14 +348,16 @@ export default function MultiplayerBlink({
                 {/* Progress Bar */}
                 <div className="mt-2">
                   <div className="flex items-center justify-between text-xs text-white/60 mb-1">
-                    <span>Char {currentCharIndex + 1}/{totalChars}</span>
-                    <span>{(timeRemaining / 1000).toFixed(1)}s</span>
+                    <span>Char {(playerData?.currentCharIndex ?? 0) + 1}/{totalChars}</span>
+                    <span>{isCurrentPlayer ? (timeRemaining / 1000).toFixed(1) : '-'}s</span>
                   </div>
                   <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${timerColor} transition-all duration-100`}
-                      style={{ width: `${timerPercent}%` }}
-                    />
+                    {isCurrentPlayer && (
+                      <div
+                        className={`h-full ${timerColor} transition-all duration-100`}
+                        style={{ width: `${timerPercent}%` }}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
@@ -339,7 +369,7 @@ export default function MultiplayerBlink({
                     Type this character:
                   </div>
                   <div className="text-white text-8xl md:text-9xl font-bold mb-6 animate-pulse">
-                    {currentChar || '...'}
+                    {playerData?.currentChar || '...'}
                   </div>
                   {feedback && isCurrentPlayer && (
                     <div
@@ -350,7 +380,7 @@ export default function MultiplayerBlink({
                       {feedback.message}
                     </div>
                   )}
-                  {!currentChar && (
+                  {!playerData?.currentChar && (
                     <div className="text-white/60 text-sm">
                       Waiting for game state...
                     </div>

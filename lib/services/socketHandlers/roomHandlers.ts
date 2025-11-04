@@ -9,6 +9,8 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
     try {
       const { playerId, displayName } = socket.data;
 
+      console.log(`🏗️  room:create request from ${displayName}: gameType="${data.gameType}", roomName="${data.roomName}"`);
+
       // Check if player is already in a room
       const existingRoom = await RoomManager.getRoomByPlayerId(playerId);
       if (existingRoom) {
@@ -26,6 +28,8 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
         hostName: displayName,
         settings: data.settings,
       });
+
+      console.log(`✅ Room created: ${room.roomId}, gameType="${room.gameType}"`);
 
       // Join socket room
       socket.join(room.roomId);

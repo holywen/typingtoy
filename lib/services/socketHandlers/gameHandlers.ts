@@ -217,11 +217,14 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
       const now = Date.now();
       const lastTimestamp = playerLastKeystroke.get(playerId);
 
+      // Extract the character from input.data (different structure for different games)
+      const char = input.data?.key || input.data?.char || '';
+
       const validation = AntiCheatValidator.validateKeystroke({
-        char: input.char,
+        char,
         timestamp: now,
         previousTimestamp: lastTimestamp,
-        expectedChar: input.char, // Game engine will validate correctness
+        expectedChar: char, // Game engine will validate correctness
       });
 
       if (!validation.valid) {
