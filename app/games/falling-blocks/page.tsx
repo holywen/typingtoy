@@ -87,6 +87,14 @@ export default function FallingBlocksGame() {
     }
   }, [gameStarted, gameOver, level, spawnBlock, gameLoop]);
 
+  const startGame = useCallback(() => {
+    setGameStarted(true);
+    setGameOver(false);
+    setScore(0);
+    setLevel(1);
+    setBlocks([]);
+  }, []);
+
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over screen
     if (gameOver && e.key === 'Enter') {
@@ -113,20 +121,12 @@ export default function FallingBlocksGame() {
       }
       return prev;
     });
-  }, [gameStarted, gameOver]);
+  }, [gameStarted, gameOver, startGame]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
-
-  const startGame = () => {
-    setGameStarted(true);
-    setGameOver(false);
-    setScore(0);
-    setLevel(1);
-    setBlocks([]);
-  };
 
   const resetGame = () => {
     setGameStarted(false);

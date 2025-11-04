@@ -168,20 +168,20 @@ export default function FallingWordsGame() {
 
       return prev;
     });
-  }, [gameStarted, gameOver]);
+  }, [gameStarted, gameOver, startGame]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  const startGame = () => {
+  const startGame = useCallback(() => {
     setGameStarted(true);
     setGameOver(false);
     setScore(0);
     setLevel(1);
     setWords([]);
-  };
+  }, []);
 
   const resetGame = () => {
     setGameStarted(false);

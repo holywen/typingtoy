@@ -169,20 +169,20 @@ export default function TypingWalkGame() {
         return newLives;
       });
     }
-  }, [gameStarted, gameOver, grid, playerRow, playerCol, currentPath]);
+  }, [gameStarted, gameOver, grid, playerRow, playerCol, currentPath, startGame]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  const startGame = () => {
+  const startGame = useCallback(() => {
     setGameStarted(true);
     setGameOver(false);
     setScore(0);
     setLives(5);
     setTime(0);
-  };
+  }, []);
 
   const resetGame = () => {
     setGameStarted(false);

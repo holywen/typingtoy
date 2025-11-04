@@ -93,7 +93,7 @@ export default function BlinkGame() {
       setStreak(0);
       setScore(s => Math.max(0, s - 5)); // Lose 5 points for wrong key
     }
-  }, [gameStarted, gameOver, currentChar, score, streak, bestStreak, nextRound]);
+  }, [gameStarted, gameOver, currentChar, score, streak, bestStreak, nextRound, startGame]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -106,14 +106,14 @@ export default function BlinkGame() {
     }
   }, [gameStarted, gameOver, chars, currentChar, nextRound]);
 
-  const startGame = () => {
+  const startGame = useCallback(() => {
     setGameStarted(true);
     setGameOver(false);
     setScore(0);
     setStreak(0);
     setLevel(1);
     setCurrentChar('');
-  };
+  }, []);
 
   const resetGame = () => {
     setGameStarted(false);
