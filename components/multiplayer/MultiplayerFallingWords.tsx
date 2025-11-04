@@ -112,6 +112,16 @@ export default function MultiplayerFallingWords({
   }
 
   const wordsState = gameState.gameSpecificState as FallingWordsGameState;
+
+  // Safety check - wait for game state to be fully initialized
+  if (!wordsState || !wordsState.words || !Array.isArray(wordsState.words)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-pink-900 to-purple-900">
+        <div className="text-white text-2xl">Loading game...</div>
+      </div>
+    );
+  }
+
   const currentPlayerState = playerStates.get(playerId);
   const currentPlayerData = currentPlayerState?.gameSpecificData as FallingWordsPlayerData | undefined;
 
@@ -122,8 +132,13 @@ export default function MultiplayerFallingWords({
   // Determine number of players for layout
   const playerCount = playerStates.size;
 
+  // Determine grid layout based on player count
+  const gridLayout = playerCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+                     playerCount === 3 ? 'grid-cols-1 md:grid-cols-3' :
+                     'grid-cols-2 md:grid-cols-2';
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-900 to-purple-900 overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-pink-900 to-purple-900 p-4">
       {/* Game Over Modal */}
       {gameEnded && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
@@ -184,171 +199,145 @@ export default function MultiplayerFallingWords({
         </div>
       )}
 
-      {/* Top HUD with player stats */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10">
-        <div className={`grid gap-3 ${
-          playerCount === 2 ? 'grid-cols-2' :
-          playerCount === 3 ? 'grid-cols-3' :
-          'grid-cols-2'
-        }`}>
-          {sortedPlayers.map(([pid, pState], index) => {
-            const pData = pState.gameSpecificData as FallingWordsPlayerData;
-            const isCurrentPlayer = pid === playerId;
-            const rank = index + 1;
+      {/* Split-screen Grid for 2-4 players */}
+      <div className={`grid ${gridLayout} gap-4 min-h-[calc(100vh-2rem)]`}>
+        {sortedPlayers.map(([pid, pState], index) => {
+          const isCurrentPlayer = pid === playerId;
+          const pData = pState.gameSpecificData as FallingWordsPlayerData;
 
-            return (
-              <div
-                key={pid}
-                className={`bg-white/10 backdrop-blur-md rounded-lg p-3 ${
-                  isCurrentPlayer ? 'ring-2 ring-pink-400' : ''
-                }`}
-              >
+          // Filter words for this specific player
+          const playerWords = wordsState.words.filter((word) => {
+            const completedIds = Array.isArray(pData.completedWordIds)
+              ? pData.completedWordIds
+              : Array.from(pData.completedWordIds || []);
+            const lostIds = Array.isArray(pData.lostWordIds)
+              ? pData.lostWordIds
+              : Array.from(pData.lostWordIds || []);
+
+            return !completedIds.includes(word.id) && !lostIds.includes(word.id);
+          });
+
+          return (
+            <div
+              key={pid}
+              className={`relative bg-gradient-to-b from-pink-900/30 to-purple-900/30 rounded-lg border-2 overflow-hidden flex flex-col
+                ${isCurrentPlayer ? 'border-pink-400 shadow-lg shadow-pink-400/50' : 'border-gray-600'}`}
+            >
+              {/* Player Header */}
+              <div className="absolute top-0 left-0 right-0 p-3 bg-black/70 backdrop-blur-sm z-10">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">
-                        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
-                      </span>
-                      <span className="font-bold text-white">
-                        {pState.displayName} {isCurrentPlayer && '(You)'}
-                      </span>
-                    </div>
-                    <div className="text-sm text-white/70">
-                      Words: {pData.wordsCompleted} | Lost: {pData.wordsLost}/{pData.maxLostWords}
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${pState.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div className="font-bold text-white">
+                      {pState.displayName}
+                      {isCurrentPlayer && ' (You)'}
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-white">{pState.score}</div>
-                    <div className="text-xs text-white/70">{pState.accuracy.toFixed(1)}%</div>
+                  <div className="text-sm text-white/80">
+                    Rank #{index + 1}
                   </div>
                 </div>
 
-                {/* Progress bar showing words lost */}
+                {/* Stats */}
+                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-white/80">
+                  <div>
+                    <div className="text-white/60">Score</div>
+                    <div className="font-bold text-white">{pState.score}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Words</div>
+                    <div className="font-bold text-white">{pData.wordsCompleted}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Acc</div>
+                    <div className="font-bold text-white">{pState.accuracy.toFixed(0)}%</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Lost</div>
+                    <div className="font-bold text-white">{pData.wordsLost}/{pData.maxLostWords}</div>
+                  </div>
+                </div>
+
+                {/* Lives Progress Bar */}
                 <div className="mt-2">
-                  <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 ${
                         pData.wordsLost >= pData.maxLostWords ? 'bg-red-500' :
                         pData.wordsLost >= pData.maxLostWords * 0.7 ? 'bg-orange-500' :
                         'bg-green-500'
                       }`}
-                      style={{ width: `${(pData.wordsLost / pData.maxLostWords) * 100}%` }}
+                      style={{ width: `${((pData.maxLostWords - pData.wordsLost) / pData.maxLostWords) * 100}%` }}
                     />
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Falling Words Area */}
-      <div className="relative w-full h-screen pt-32">
-        {wordsState.words.map((word) => {
-          // Check which player (if any) is typing this word
-          let typingPlayer: [string, GamePlayerState] | null = null;
-          for (const [pid, pState] of playerStates) {
-            const pData = pState.gameSpecificData as FallingWordsPlayerData;
-            if (pData.currentWordId === word.id) {
-              typingPlayer = [pid, pState];
-              break;
-            }
-          }
+              {/* Falling Words Area for this player */}
+              <div className="relative w-full h-full flex-1 mt-32">
+                {playerWords.map((word) => {
+                  // Check if THIS player is typing this word
+                  const isPlayerTyping = pData.currentWordId === word.id;
+                  const typedProgress = isPlayerTyping ? pData.typedProgress : '';
 
-          const isCurrentPlayerTyping = typingPlayer && typingPlayer[0] === playerId;
-          const typedProgress = isCurrentPlayerTyping
-            ? (currentPlayerData?.typedProgress || '')
-            : typingPlayer
-            ? (typingPlayer[1].gameSpecificData as FallingWordsPlayerData).typedProgress
-            : '';
+                  return (
+                    <div
+                      key={word.id}
+                      className="absolute text-xl md:text-2xl font-bold transition-all duration-100"
+                      style={{
+                        left: `${word.x}%`,
+                        top: `${word.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                      }}
+                    >
+                      <div
+                        className={`rounded-lg px-4 py-2 shadow-lg ${
+                          isPlayerTyping ? 'bg-yellow-300 dark:bg-yellow-600 border-2 border-yellow-500' :
+                          'bg-white/90 dark:bg-gray-800/90'
+                        }`}
+                      >
+                        {/* Typed portion (green/colored) */}
+                        {typedProgress && (
+                          <span className={isPlayerTyping && isCurrentPlayer ? 'text-green-700 dark:text-green-300' : 'text-blue-700 dark:text-blue-300'}>
+                            {typedProgress}
+                          </span>
+                        )}
+                        {/* Remaining portion */}
+                        <span className="text-gray-900 dark:text-white">
+                          {word.word.substring(typedProgress.length)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
 
-          return (
-            <div
-              key={word.id}
-              className="absolute text-2xl font-bold transition-all duration-100"
-              style={{
-                left: `${word.x}%`,
-                top: `${word.y}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <div
-                className={`rounded-lg px-6 py-3 shadow-lg ${
-                  isCurrentPlayerTyping ? 'bg-yellow-300 dark:bg-yellow-600 border-2 border-yellow-500' :
-                  typingPlayer ? 'bg-gray-300 dark:bg-gray-600 border-2 border-gray-500' :
-                  'bg-white dark:bg-gray-800'
-                }`}
-              >
-                {/* Typed portion (green/colored) */}
-                {typedProgress && (
-                  <span className={isCurrentPlayerTyping ? 'text-green-700 dark:text-green-300' : 'text-blue-700 dark:text-blue-300'}>
-                    {typedProgress}
-                  </span>
+                {/* Waiting message if no words for this player */}
+                {playerWords.length === 0 && !gameEnded && (
+                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                    <p className="text-white text-lg font-bold bg-black/50 rounded-lg px-4 py-2">
+                      {pData.wordsCompleted > 0 ? 'All caught up!' : 'Get ready!'}
+                    </p>
+                  </div>
                 )}
-                {/* Remaining portion */}
-                <span className="text-gray-900 dark:text-white">
-                  {word.word.substring(typedProgress.length)}
-                </span>
 
-                {/* Show which player is typing (if not current player) */}
-                {typingPlayer && !isCurrentPlayerTyping && (
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                    {typingPlayer[1].displayName}
+                {/* Feedback area (only for current player) */}
+                {feedback && isCurrentPlayer && (
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+                    <div
+                      className={`text-sm font-bold px-3 py-1 rounded-lg shadow-lg ${
+                        feedback.type === 'correct' ? 'bg-green-500 text-white' :
+                        feedback.type === 'error' ? 'bg-red-500 text-white' :
+                        'bg-gray-500 text-white'
+                      }`}
+                    >
+                      {feedback.message}
+                    </div>
                   </div>
                 )}
               </div>
             </div>
           );
         })}
-
-        {/* Waiting message if no words */}
-        {wordsState.words.length === 0 && !gameEnded && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-            <p className="text-white text-2xl font-bold bg-black/50 rounded-lg px-6 py-3">
-              Get ready! Words are coming...
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Current player feedback */}
-      {feedback && currentPlayerData && (
-        <div className="fixed top-40 left-1/2 transform -translate-x-1/2 z-40">
-          <div
-            className={`px-8 py-4 rounded-lg font-bold text-xl shadow-lg ${
-              feedback.type === 'correct'
-                ? 'bg-green-500 text-white'
-                : 'bg-red-500 text-white'
-            }`}
-          >
-            {feedback.message}
-          </div>
-        </div>
-      )}
-
-      {/* Current typing indicator for current player */}
-      {currentPlayerData && currentPlayerData.currentWordId !== null && !gameEnded && (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-2xl">
-          <div className="text-center">
-            <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-              Currently typing:
-            </div>
-            <div className="text-3xl font-bold">
-              <span className="text-green-600 dark:text-green-400">
-                {currentPlayerData.typedProgress}
-              </span>
-              <span className="text-gray-900 dark:text-white">
-                {wordsState.words.find(w => w.id === currentPlayerData.currentWordId)?.word.substring(currentPlayerData.typedProgress.length) || ''}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Speed indicator */}
-      <div className="fixed bottom-8 right-8 bg-white/10 backdrop-blur-md text-white rounded-lg px-4 py-2">
-        <div className="text-xs">Speed</div>
-        <div className="text-xl font-bold">{wordsState.gameSpeed.toFixed(1)}x</div>
       </div>
     </div>
   );

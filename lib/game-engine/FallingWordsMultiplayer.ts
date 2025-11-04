@@ -42,6 +42,8 @@ export interface FallingWordsPlayerData {
   wordsCompleted: number;            // Total words completed
   wordsLost: number;                 // Words that fell off screen
   maxLostWords: number;              // Game over threshold
+  completedWordIds: Set<number>;    // IDs of words this player has completed
+  lostWordIds: Set<number>;         // IDs of words this player has lost
 }
 
 /**
@@ -61,8 +63,8 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
   private readonly UPDATE_INTERVAL = 50; // Update words every 50ms
   private lastUpdateTime: number = 0;
 
-  protected onGameInit(settings: GameSettings): void {
-    const characters = settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
+  protected initGame(): void {
+    const characters = this.settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
     const maxLostWords = 5; // Lose after 5 words fall off screen
 
     // Generate word pool using seeded RNG for consistency
@@ -92,6 +94,8 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
         wordsCompleted: 0,
         wordsLost: 0,
         maxLostWords,
+        completedWordIds: new Set(),
+        lostWordIds: new Set(),
       };
 
       playerState.gameSpecificData = playerData;
@@ -183,15 +187,23 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
       const playerData = playerState.gameSpecificData as FallingWordsPlayerData;
 
-      // Check if player has any words that reached bottom
-      const lostWords = state.words.filter(word => word.y >= state.bottomThreshold);
+      // Check if player has any NEW words that reached bottom (not already lost/completed)
+      const newLostWords = state.words.filter(word =>
+        word.y >= state.bottomThreshold &&
+        !playerData.lostWordIds.has(word.id) &&
+        !playerData.completedWordIds.has(word.id)
+      );
 
-      if (lostWords.length > 0) {
+      if (newLostWords.length > 0) {
         // Player loses these words
-        playerData.wordsLost += lostWords.length;
+        for (const word of newLostWords) {
+          playerData.lostWordIds.add(word.id);
+          playerData.wordsLost++;
+        }
+
         playerState.lives = playerData.maxLostWords - playerData.wordsLost;
 
-        console.log(`💀 Player ${playerState.displayName} lost ${lostWords.length} words. Total lost: ${playerData.wordsLost}`);
+        console.log(`💀 Player ${playerState.displayName} lost ${newLostWords.length} words. Total lost: ${playerData.wordsLost}`);
 
         // Check if player game over
         if (playerData.wordsLost >= playerData.maxLostWords) {
@@ -199,10 +211,23 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
           playerState.isFinished = true;
         }
       }
-
-      // Remove lost words from game (all players see them removed)
-      state.words = state.words.filter(word => word.y < state.bottomThreshold);
     }
+
+    // Remove words from shared state only when ALL players have completed or lost them
+    state.words = state.words.filter(word => {
+      // Keep words that passed bottom threshold but still need to be tracked
+      if (word.y < state.bottomThreshold) {
+        return true; // Keep active words
+      }
+
+      // For words past bottom, check if all players have processed them
+      const allPlayersProcessed = Array.from(this.gameState.players.values()).every(p => {
+        const pd = p.gameSpecificData as FallingWordsPlayerData;
+        return pd.lostWordIds.has(word.id) || pd.completedWordIds.has(word.id) || p.isFinished;
+      });
+
+      return !allPlayersProcessed; // Remove only if all players processed
+    });
 
     // Check if all players finished
     const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
@@ -302,8 +327,8 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
             playerData.wordsCompleted++;
             playerState.score += targetWord.word.length * 10;
 
-            // Remove word from game
-            state.words = state.words.filter(w => w.id !== targetWord.id);
+            // Track completed word ID (don't remove from shared state yet)
+            playerData.completedWordIds.add(targetWord.id);
 
             // Reset player's current word
             playerData.currentWordId = null;
@@ -312,6 +337,17 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
             playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
             console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"! Words: ${playerData.wordsCompleted}`);
+
+            // Check if all players have completed or lost this word, then remove it
+            const allPlayersProcessed = Array.from(this.gameState.players.values()).every(p => {
+              const pd = p.gameSpecificData as FallingWordsPlayerData;
+              return pd.completedWordIds.has(targetWord.id) || pd.lostWordIds.has(targetWord.id) || p.isFinished;
+            });
+
+            if (allPlayersProcessed) {
+              state.words = state.words.filter(w => w.id !== targetWord.id);
+              console.log(`🗑️ Word "${targetWord.word}" removed (all players processed)`);
+            }
 
             return {
               success: true,
@@ -367,8 +403,8 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
         playerData.wordsCompleted++;
         playerState.score += targetWord.word.length * 10;
 
-        // Remove word from game
-        state.words = state.words.filter(w => w.id !== targetWord.id);
+        // Track completed word ID (don't remove from shared state yet)
+        playerData.completedWordIds.add(targetWord.id);
 
         playerData.currentWordId = null;
         playerData.typedProgress = '';
@@ -376,6 +412,17 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
         playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
         console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"!`);
+
+        // Check if all players have completed or lost this word, then remove it
+        const allPlayersProcessed = Array.from(this.gameState.players.values()).every(p => {
+          const pd = p.gameSpecificData as FallingWordsPlayerData;
+          return pd.completedWordIds.has(targetWord.id) || pd.lostWordIds.has(targetWord.id) || p.isFinished;
+        });
+
+        if (allPlayersProcessed) {
+          state.words = state.words.filter(w => w.id !== targetWord.id);
+          console.log(`🗑️ Word "${targetWord.word}" removed (all players processed)`);
+        }
 
         return {
           success: true,
@@ -442,12 +489,28 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
   serialize(): SerializedGameState {
     const state = this.gameState.gameSpecificState as FallingWordsGameState;
 
-    // Use base serialization
-    const baseState = serializeGameState(this.gameState);
+    // Convert player data with Sets to serializable format
+    const serializedPlayers: Record<string, any> = {};
+    for (const [playerId, playerState] of this.gameState.players) {
+      const playerData = playerState.gameSpecificData as FallingWordsPlayerData;
+      serializedPlayers[playerId] = {
+        ...playerState,
+        gameSpecificData: {
+          ...playerData,
+          completedWordIds: Array.from(playerData.completedWordIds),
+          lostWordIds: Array.from(playerData.lostWordIds),
+        }
+      };
+    }
 
     // Include Falling Words-specific state
     return {
-      ...baseState,
+      roomId: this.gameState.roomId,
+      gameType: this.gameState.gameType,
+      status: this.gameState.status,
+      startTime: this.gameState.startTime,
+      players: serializedPlayers,
+      winnerId: this.gameState.winnerId,
       gameSpecificState: {
         words: state.words,
         nextWordId: state.nextWordId,

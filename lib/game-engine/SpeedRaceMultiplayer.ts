@@ -62,8 +62,8 @@ export interface SpeedRacePlayerData {
 export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
   protected gameType: string = 'speed-race';
 
-  protected onGameInit(settings: GameSettings): void {
-    const characters = settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
+  protected initGame(): void {
+    const characters = this.settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
     const maxLives = 5;
 
     // Generate shared grid and path using seeded RNG

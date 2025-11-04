@@ -20,7 +20,7 @@
 |------|------|----------|------|
 | Phase 1 | 基础架构搭建 | 3-4天 | ✅ 已完成 |
 | Phase 2 | 游戏大厅功能 | 4-5天 | ✅ 已完成 |
-| Phase 3 | 实时游戏同步 | 5-6天 | ⏳ 进行中 (80%) |
+| Phase 3 | 实时游戏同步 | 5-6天 | ⏳ 进行中 (85%) |
 | Phase 4 | 观战模式 | 2天 | ⏸️ 待开始 |
 | Phase 5 | 排行榜系统 | 3天 | ⏸️ 待开始 |
 | Phase 6 | UI集成与优化 | 3天 | ⏸️ 待开始 |
@@ -711,23 +711,26 @@ interface TypingWalkPlayerState extends PlayerState {
 
 ---
 
-#### 3.2.4 Falling Words 多人版
+#### 3.2.4 Falling Words 多人版 ✅
 
 **文件:** `/lib/game-engine/FallingWordsMultiplayer.ts`
 
-**多人机制（竞争模式）:**
-- 共享词汇池，但**抢词机制**
-- 第一个开始打某个词的人"锁定"该词
-- 其他人不能再打该词
-- 抢到词后必须打完，否则扣分
+**多人机制（独立进度模式）:**
+- 所有玩家看到**相同的词汇序列**（共享RNG种子）
+- 各自独立打字，互不干扰
+- **每个玩家独立跟踪完成/丢失的词** - 完成的词只对该玩家消失
+- 词汇仅在所有玩家都完成或丢失后才从共享状态移除
+- 胜利条件：达到最大丢失词数前完成最多词汇者胜
 
 **状态同步:**
 ```typescript
 interface FallingWordsGameState extends GameState {
   gameSpecificState: {
-    words: FallingWord[];        // 当前屏幕上的词
+    words: FallingWord[];        // 当前屏幕上的词（共享）
     wordPool: string[];          // 预生成的词汇池
     nextWordIndex: number;
+    spawnInterval: number;
+    bottomThreshold: number;     // 词汇掉落阈值
   };
 }
 
@@ -737,25 +740,30 @@ interface FallingWord {
   x: number;
   y: number;
   speed: number;
-  lockedBy?: string;             // 被哪个玩家锁定
-  typedProgress: string;         // 已输入部分
 }
 
 interface FallingWordsPlayerState extends PlayerState {
   gameSpecificData: {
-    currentWordId?: number;      // 正在打的词
+    currentWordId: number | null;      // 正在打的词
+    typedProgress: string;             // 已输入进度
     wordsCompleted: number;
-    wordsDropped: number;        // 没打完就掉落的词（惩罚）
+    wordsLost: number;                 // 掉落的词（惩罚）
+    maxLostWords: number;              // 最大丢失数（5个）
+    completedWordIds: Set<number>;     // 该玩家已完成的词ID
+    lostWordIds: Set<number>;          // 该玩家已丢失的词ID
   };
 }
 ```
 
 **任务清单:**
-- [ ] 实现抢词锁定机制
-- [ ] 实现词汇池预生成
-- [ ] 显示词被谁锁定（颜色标记）
-- [ ] 实现放弃机制（ESC取消当前词）
-- [ ] 添加抢词特效（词被锁定时高亮）
+- [x] 实现词汇池预生成（共享RNG种子）✅
+- [x] 实现每玩家独立进度跟踪 ✅
+- [x] 实现词汇仅在所有玩家处理后移除 ✅
+- [x] 实现分屏UI（2-4人布局）✅
+- [x] 每个玩家面板独立过滤显示词汇 ✅
+- [x] 实现玩家输入验证（防作弊）✅
+- [x] 显示每个玩家的实时统计（分数、完成数、准确率、生命值）✅
+- [x] Playwright E2E测试验证 ✅
 
 ---
 

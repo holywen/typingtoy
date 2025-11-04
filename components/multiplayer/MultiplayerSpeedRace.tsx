@@ -115,6 +115,16 @@ export default function MultiplayerSpeedRace({
   }
 
   const raceState = gameState.gameSpecificState as SpeedRaceGameState;
+
+  // Safety check - wait for game state to be fully initialized
+  if (!raceState || !raceState.grid || !raceState.pathSequence) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
+        <div className="text-white text-2xl">Loading game...</div>
+      </div>
+    );
+  }
+
   const currentPlayerState = playerStates.get(playerId);
   const currentPlayerData = currentPlayerState?.gameSpecificData as SpeedRacePlayerData | undefined;
 
