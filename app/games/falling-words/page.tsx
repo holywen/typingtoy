@@ -296,7 +296,7 @@ export default function FallingWordsGame() {
         {words.length === 0 && !gameOver && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
             <p className="text-white text-2xl font-bold bg-black/50 rounded-lg px-6 py-3">
-              Get ready! Words are coming...
+              {t.games?.getReady || 'Get ready! Words are coming...'}
             </p>
           </div>
         )}

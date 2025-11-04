@@ -6,21 +6,25 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 const games = [
   {
     id: 'falling-blocks',
+    translationKey: 'fallingBlocks',
     icon: '🧱',
     color: 'from-blue-500 to-purple-600',
   },
   {
     id: 'blink',
+    translationKey: 'blink',
     icon: '⚡',
     color: 'from-yellow-500 to-orange-600',
   },
   {
     id: 'typing-walk',
+    translationKey: 'typingWalk',
     icon: '🚶',
     color: 'from-green-500 to-teal-600',
   },
   {
     id: 'falling-words',
+    translationKey: 'fallingWords',
     icon: '📝',
     color: 'from-pink-500 to-red-600',
   },
@@ -60,10 +64,10 @@ export default function GamesPage() {
                   {game.icon}
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                  {t.games?.[game.id.replace(/-/g, '') as keyof typeof t.games]?.name || game.id}
+                  {(t.games?.[game.translationKey as keyof typeof t.games] as any)?.name || game.id}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 text-sm">
-                  {t.games?.[game.id.replace(/-/g, '') as any]?.description || 'Fun typing game'}
+                  {(t.games?.[game.translationKey as keyof typeof t.games] as any)?.description || 'Fun typing game'}
                 </p>
               </div>
 

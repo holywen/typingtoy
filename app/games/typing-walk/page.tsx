@@ -5,10 +5,14 @@ import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { lessonsData } from '@/lib/data/lessons';
 
-interface Obstacle {
-  id: number;
-  x: number;
+const GRID_ROWS = 10;
+const GRID_COLS = 22;
+
+interface GridCell {
   char: string;
+  isPath: boolean;
+  isVisited: boolean;
+  isHighlight: boolean;
 }
 
 export default function TypingWalkGame() {
@@ -16,14 +20,15 @@ export default function TypingWalkGame() {
   const [selectedLesson, setSelectedLesson] = useState<number | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [score, setScore] = useState(0);
-  const [distance, setDistance] = useState(0);
+  const [lives, setLives] = useState(5);
+  const [time, setTime] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [chars, setChars] = useState<string[]>([]);
-  const [playerY, setPlayerY] = useState(50); // Vertical position (%)
-  const [obstacles, setObstacles] = useState<Obstacle[]>([]);
-  const [currentTarget, setCurrentTarget] = useState<Obstacle | null>(null);
-  const obstacleIdRef = useRef(0);
-  const gameLoopRef = useRef<number>();
+  const [grid, setGrid] = useState<GridCell[][]>([]);
+  const [playerRow, setPlayerRow] = useState(0);
+  const [playerCol, setPlayerCol] = useState(1);
+  const [currentPath, setCurrentPath] = useState<Array<{row: number, col: number}>>([]);
+  const timerRef = useRef<NodeJS.Timeout>();
 
   // Get characters from selected lesson
   useEffect(() => {
@@ -38,86 +43,126 @@ export default function TypingWalkGame() {
     }
   }, [selectedLesson]);
 
-  const spawnObstacle = useCallback(() => {
+  // Generate grid with path
+  const generateGrid = useCallback(() => {
     if (chars.length === 0) return;
 
-    const newObstacle: Obstacle = {
-      id: obstacleIdRef.current++,
-      x: 100, // Start from right side
-      char: chars[Math.floor(Math.random() * chars.length)],
-    };
+    const newGrid: GridCell[][] = [];
+    const path: Array<{row: number, col: number}> = [];
 
-    setObstacles(prev => [...prev, newObstacle]);
-  }, [chars]);
+    // Start from left side, random row
+    let currentRow = Math.floor(Math.random() * GRID_ROWS);
+    let currentCol = 1;
 
-  const gameLoop = useCallback(() => {
-    setObstacles(prev => {
-      const updated = prev.map(obstacle => ({
-        ...obstacle,
-        x: obstacle.x - 1, // Move obstacles to the left
-      }));
+    path.push({ row: currentRow, col: currentCol });
 
-      // Check for collision with player (player is at x: 20%)
-      const collision = updated.some(
-        obstacle => obstacle.x < 25 && obstacle.x > 15 && obstacle.id !== currentTarget?.id
-      );
+    // Generate a winding path across the grid
+    while (currentCol < GRID_COLS - 1) {
+      currentCol++;
 
-      if (collision) {
-        setGameOver(true);
-        return prev;
+      // Randomly move up, down, or stay
+      const move = Math.random();
+      if (move < 0.3 && currentRow > 0) {
+        currentRow--;
+      } else if (move > 0.7 && currentRow < GRID_ROWS - 1) {
+        currentRow++;
       }
 
-      // Remove obstacles that went off screen
-      return updated.filter(obstacle => obstacle.x > -10);
-    });
+      path.push({ row: currentRow, col: currentCol });
+    }
 
-    setDistance(d => d + 1);
-  }, [currentTarget]);
+    setCurrentPath(path);
+
+    // Fill grid with random characters
+    for (let row = 0; row < GRID_ROWS; row++) {
+      newGrid[row] = [];
+      for (let col = 0; col < GRID_COLS; col++) {
+        const isOnPath = path.some(p => p.row === row && p.col === col);
+        newGrid[row][col] = {
+          char: chars[Math.floor(Math.random() * chars.length)],
+          isPath: isOnPath,
+          isVisited: false,
+          isHighlight: false,
+        };
+      }
+    }
+
+    setGrid(newGrid);
+    setPlayerRow(path[0].row);
+    setPlayerCol(path[0].col);
+
+    // Mark starting position as visited
+    newGrid[path[0].row][path[0].col].isVisited = true;
+  }, [chars]);
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
-      // Spawn obstacles periodically
-      const spawnInterval = setInterval(() => {
-        spawnObstacle();
-      }, 2000);
+      generateGrid();
+    }
+  }, [gameStarted, gameOver, generateGrid]);
 
-      // Game loop
-      gameLoopRef.current = window.setInterval(gameLoop, 50);
+  // Timer
+  useEffect(() => {
+    if (gameStarted && !gameOver) {
+      timerRef.current = setInterval(() => {
+        setTime(t => t + 1);
+      }, 1000);
 
       return () => {
-        clearInterval(spawnInterval);
-        if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+        if (timerRef.current) clearInterval(timerRef.current);
       };
     }
-  }, [gameStarted, gameOver, spawnObstacle, gameLoop]);
-
-  // Set current target to the closest obstacle
-  useEffect(() => {
-    if (obstacles.length > 0 && !currentTarget) {
-      const closest = obstacles.reduce((prev, curr) =>
-        curr.x < prev.x ? curr : prev
-      );
-      setCurrentTarget(closest);
-    } else if (currentTarget && !obstacles.find(o => o.id === currentTarget.id)) {
-      setCurrentTarget(null);
-    }
-  }, [obstacles, currentTarget]);
+  }, [gameStarted, gameOver]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
-    if (!gameStarted || gameOver) return;
+    if (!gameStarted || gameOver || grid.length === 0) return;
 
     const key = e.key.toLowerCase();
 
-    if (currentTarget && key === currentTarget.char) {
-      // Correct key - jump over obstacle
-      setPlayerY(20); // Jump up
-      setTimeout(() => setPlayerY(50), 300); // Land back down
+    // Ignore non-letter keys
+    if (key.length !== 1 || !key.match(/[a-z;]/)) return;
 
-      setScore(s => s + 10);
-      setObstacles(prev => prev.filter(o => o.id !== currentTarget.id));
-      setCurrentTarget(null);
+    // Find current position in path
+    const currentPathIndex = currentPath.findIndex(
+      p => p.row === playerRow && p.col === playerCol
+    );
+
+    if (currentPathIndex === -1) return;
+
+    // Get next position in path
+    const nextPathIndex = currentPathIndex + 1;
+    if (nextPathIndex >= currentPath.length) {
+      // Won the game!
+      setGameOver(true);
+      return;
     }
-  }, [gameStarted, gameOver, currentTarget]);
+
+    const nextPos = currentPath[nextPathIndex];
+    const nextCell = grid[nextPos.row][nextPos.col];
+
+    if (key === nextCell.char) {
+      // Correct key!
+      setScore(s => s + 10);
+      setPlayerRow(nextPos.row);
+      setPlayerCol(nextPos.col);
+
+      // Mark as visited
+      setGrid(prev => {
+        const newGrid = prev.map(row => row.map(cell => ({ ...cell })));
+        newGrid[nextPos.row][nextPos.col].isVisited = true;
+        return newGrid;
+      });
+    } else {
+      // Wrong key!
+      setLives(l => {
+        const newLives = l - 1;
+        if (newLives <= 0) {
+          setGameOver(true);
+        }
+        return newLives;
+      });
+    }
+  }, [gameStarted, gameOver, grid, playerRow, playerCol, currentPath]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -128,20 +173,17 @@ export default function TypingWalkGame() {
     setGameStarted(true);
     setGameOver(false);
     setScore(0);
-    setDistance(0);
-    setObstacles([]);
-    setCurrentTarget(null);
-    setPlayerY(50);
+    setLives(5);
+    setTime(0);
   };
 
   const resetGame = () => {
     setGameStarted(false);
     setGameOver(false);
     setScore(0);
-    setDistance(0);
-    setObstacles([]);
-    setCurrentTarget(null);
-    setPlayerY(50);
+    setLives(5);
+    setTime(0);
+    setGrid([]);
     setSelectedLesson(null);
   };
 
@@ -162,7 +204,7 @@ export default function TypingWalkGame() {
               {t.games?.typingWalk?.name || 'Typing Walk'}
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              {t.games?.typingWalk?.instructions || 'Type the correct letters to jump over obstacles and keep walking!'}
+              {t.games?.typingWalk?.instructions || 'Type the correct letters to walk through the grid. Follow the green path!'}
             </p>
 
             <div className="mb-8">
@@ -215,77 +257,72 @@ export default function TypingWalkGame() {
     );
   }
 
+  // Check if won
+  const isWon = playerCol === GRID_COLS - 1;
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-green-400 to-blue-500 overflow-hidden">
-      {/* HUD */}
-      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center text-white z-10">
-        <div className="text-2xl font-bold">
-          {t.games?.score || 'Score'}: {score}
-        </div>
-        <div className="text-2xl font-bold">
-          Distance: {Math.floor(distance / 20)}m
-        </div>
-      </div>
+    <main className="min-h-screen bg-gray-100 dark:bg-gray-900 p-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+          {t.games?.typingWalk?.name || 'Typing Walk Game'}
+        </h1>
 
-      {/* Game Area */}
-      <div className="relative w-full h-screen">
-        {/* Ground */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-green-800" />
-        <div className="absolute bottom-32 left-0 right-0 h-1 bg-green-900" />
+        {/* Game Grid */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 border-4 border-gray-300 dark:border-gray-700">
+          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))` }}>
+            {grid.map((row, rowIndex) =>
+              row.map((cell, colIndex) => {
+                const isPlayer = rowIndex === playerRow && colIndex === playerCol;
+                const isNextTarget = currentPath.findIndex(p => p.row === playerRow && p.col === playerCol) + 1 ===
+                  currentPath.findIndex(p => p.row === rowIndex && p.col === colIndex);
 
-        {/* Player */}
-        <div
-          className="absolute text-6xl transition-all duration-300 ease-out"
-          style={{
-            left: '20%',
-            bottom: `${playerY}%`,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          🚶
-        </div>
+                return (
+                  <div
+                    key={`${rowIndex}-${colIndex}`}
+                    className={`
+                      aspect-square flex items-center justify-center text-lg font-semibold border border-gray-300 dark:border-gray-600
+                      ${isPlayer ? 'bg-green-400 text-white scale-110 z-10' : ''}
+                      ${!isPlayer && isNextTarget ? 'bg-yellow-300 text-gray-900 animate-pulse' : ''}
+                      ${!isPlayer && !isNextTarget && cell.isVisited ? 'bg-green-100 dark:bg-green-900 text-gray-700 dark:text-gray-300' : ''}
+                      ${!isPlayer && !isNextTarget && !cell.isVisited && cell.isPath ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white' : ''}
+                      ${!isPlayer && !isNextTarget && !cell.isVisited && !cell.isPath ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400' : ''}
+                    `}
+                  >
+                    {cell.char}
+                  </div>
+                );
+              })
+            )}
+          </div>
 
-        {/* Obstacles */}
-        {obstacles.map(obstacle => (
-          <div
-            key={obstacle.id}
-            className={`absolute bottom-32 transition-all ${
-              currentTarget?.id === obstacle.id
-                ? 'text-yellow-400 scale-125'
-                : 'text-red-600'
-            }`}
-            style={{
-              left: `${obstacle.x}%`,
-            }}
-          >
-            <div className="text-5xl font-bold bg-white dark:bg-gray-800 rounded-lg px-4 py-2 shadow-lg border-4 border-current">
-              {obstacle.char}
+          {/* Stats */}
+          <div className="mt-6 flex justify-between items-center text-lg font-bold">
+            <div className="text-gray-900 dark:text-white">
+              {t.games?.score || 'Score'}: {score}
+            </div>
+            <div className="text-gray-900 dark:text-white">
+              {t.games?.lives || 'Lives'}: {lives}
+            </div>
+            <div className="text-gray-900 dark:text-white">
+              {t.games?.time || 'Time'}: {time}s
             </div>
           </div>
-        ))}
+        </div>
 
-        {/* Instruction */}
-        {currentTarget && (
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-            <p className="text-white text-2xl font-bold bg-black/50 rounded-lg px-6 py-3">
-              Type: {currentTarget.char}
-            </p>
-          </div>
-        )}
-
-        {gameOver && (
-          <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-20">
+        {/* Game Over / Win Modal */}
+        {(gameOver || isWon) && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center max-w-md">
-              <div className="text-6xl mb-6">🚶</div>
+              <div className="text-6xl mb-6">{isWon ? '🎉' : '😢'}</div>
               <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                {t.games?.gameOver || 'Game Over!'}
+                {isWon ? (t.games?.youWon || 'You Won!') : (t.games?.gameOver || 'Game Over!')}
               </h2>
               <div className="space-y-2 mb-8">
                 <p className="text-2xl text-gray-600 dark:text-gray-300">
                   {t.games?.score || 'Score'}: {score}
                 </p>
                 <p className="text-xl text-gray-600 dark:text-gray-300">
-                  Distance: {Math.floor(distance / 20)}m
+                  {t.games?.time || 'Time'}: {time}s
                 </p>
               </div>
               <div className="space-y-4">

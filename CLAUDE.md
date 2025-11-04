@@ -176,3 +176,5 @@ The codebase is prepared for but hasn't implemented:
 - i18next internationalization (dependencies ready, not integrated)
 - Zustand state management (package installed, currently using React hooks)
 - Some keyboard layout mappings (4 fully implemented: QWERTY, Dvorak, Colemak, AZERTY, QWERTZ; 6 fallback to QWERTY: UK QWERTY, Workman, Programmer Dvorak, Spanish layouts)
+
+*** do not commit and push until user requested everytime.

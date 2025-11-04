@@ -93,6 +93,10 @@ export default function Home() {
             <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.lessons}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.lessonsDesc}</p>
           </a>
+          <a href="/games" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
+            <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.games}</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.gamesDesc}</p>
+          </a>
           <a href="/test" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
             <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.speedTests}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.speedTestsDesc}</p>
@@ -104,10 +108,6 @@ export default function Home() {
           <a href="/progress" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
             <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.progress}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.progressDesc}</p>
-          </a>
-          <a href="/games" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
-            <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.games}</h3>
-            <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.gamesDesc}</p>
           </a>
         </div>
       </div>

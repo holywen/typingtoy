@@ -199,7 +199,7 @@ export default function BlinkGame() {
           {t.games?.level || 'Level'}: {level}
         </div>
         <div className="text-2xl font-bold">
-          Streak: {streak}
+          {t.games?.streak || 'Streak'}: {streak}
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export default function BlinkGame() {
 
             {/* Instruction */}
             <p className="text-white text-xl mt-8 opacity-75">
-              Type the character!
+              {t.games?.typeTheCharacter || 'Type the character!'}
             </p>
           </div>
         )}
@@ -243,7 +243,7 @@ export default function BlinkGame() {
                   {t.games?.score || 'Score'}: {score}
                 </p>
                 <p className="text-xl text-gray-600 dark:text-gray-300">
-                  Best Streak: {bestStreak}
+                  {t.games?.bestStreak || 'Best Streak'}: {bestStreak}
                 </p>
                 <p className="text-xl text-gray-600 dark:text-gray-300">
                   {t.games?.level || 'Level'}: {level}
