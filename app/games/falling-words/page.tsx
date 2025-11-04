@@ -119,6 +119,14 @@ export default function FallingWordsGame() {
     }
   }, [gameStarted, gameOver, level, spawnWord, gameLoop]);
 
+  const startGame = useCallback(() => {
+    setGameStarted(true);
+    setGameOver(false);
+    setScore(0);
+    setLevel(1);
+    setWords([]);
+  }, []);
+
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over screen
     if (gameOver && e.key === 'Enter') {
@@ -174,14 +182,6 @@ export default function FallingWordsGame() {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
-
-  const startGame = useCallback(() => {
-    setGameStarted(true);
-    setGameOver(false);
-    setScore(0);
-    setLevel(1);
-    setWords([]);
-  }, []);
 
   const resetGame = () => {
     setGameStarted(false);

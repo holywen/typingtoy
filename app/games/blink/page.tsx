@@ -60,6 +60,15 @@ export default function BlinkGame() {
     }
   }, [gameStarted, gameOver, currentChar]);
 
+  const startGame = useCallback(() => {
+    setGameStarted(true);
+    setGameOver(false);
+    setScore(0);
+    setStreak(0);
+    setLevel(1);
+    setCurrentChar('');
+  }, []);
+
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over screen
     if (gameOver && e.key === 'Enter') {
@@ -105,15 +114,6 @@ export default function BlinkGame() {
       nextRound();
     }
   }, [gameStarted, gameOver, chars, currentChar, nextRound]);
-
-  const startGame = useCallback(() => {
-    setGameStarted(true);
-    setGameOver(false);
-    setScore(0);
-    setStreak(0);
-    setLevel(1);
-    setCurrentChar('');
-  }, []);
 
   const resetGame = () => {
     setGameStarted(false);

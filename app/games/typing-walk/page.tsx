@@ -114,6 +114,17 @@ export default function TypingWalkGame() {
     }
   }, [gameStarted, gameOver]);
 
+  const startGame = useCallback(() => {
+    setGameStarted(true);
+    setGameOver(false);
+    setScore(0);
+    setLives(5);
+    setTime(0);
+    setGrid([]);
+    setPlayerRow(0);
+    setPlayerCol(1);
+  }, []);
+
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over/win screen
     if ((gameOver || playerCol === GRID_COLS - 1) && e.key === 'Enter') {
@@ -175,14 +186,6 @@ export default function TypingWalkGame() {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
-
-  const startGame = useCallback(() => {
-    setGameStarted(true);
-    setGameOver(false);
-    setScore(0);
-    setLives(5);
-    setTime(0);
-  }, []);
 
   const resetGame = () => {
     setGameStarted(false);
