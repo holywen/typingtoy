@@ -216,69 +216,98 @@ export default function MultiplayerFallingBlocks({
     );
   }
 
+  // Determine grid layout based on player count
+  const playerCount = sortedPlayers.length;
+  const gridLayout = playerCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+                     playerCount === 3 ? 'grid-cols-1 md:grid-cols-3' :
+                     'grid-cols-2 md:grid-cols-2';
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-purple-900 relative overflow-hidden">
-      {/* HUD - Player Stats */}
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-10">
-        {/* Left - Current Player Stats */}
-        <div className="bg-black/50 backdrop-blur-sm rounded-lg p-4 text-white">
-          <div className="text-xl font-bold mb-2">{displayName} (You)</div>
-          <div className="space-y-1 text-sm">
-            <div>Score: <span className="font-bold">{currentPlayerState?.score || 0}</span></div>
-            <div>WPM: <span className="font-bold">{Math.round(currentPlayerState?.currentWPM || 0)}</span></div>
-            <div>Accuracy: <span className="font-bold">{(currentPlayerState?.accuracy || 0).toFixed(1)}%</span></div>
-            <div>Level: <span className="font-bold">{currentPlayerState?.level || 1}</span></div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-900 to-purple-900 p-4">
+      {/* Split-screen Grid for 2-4 players */}
+      <div className={`grid ${gridLayout} gap-4 h-full`}>
+        {sortedPlayers.map((player) => {
+          const isCurrentPlayer = player.playerId === playerId;
+          const playerBlocks = localBlocks.filter((block) => block.playerId === player.playerId);
 
-        {/* Right - Other Players Leaderboard */}
-        <div className="bg-black/50 backdrop-blur-sm rounded-lg p-4 text-white max-w-xs">
-          <div className="text-lg font-bold mb-2">Players</div>
-          <div className="space-y-2">
-            {sortedPlayers.map((player, index) => (
-              <div
-                key={player.playerId}
-                className={`flex items-center justify-between text-sm ${
-                  player.playerId === playerId ? 'text-yellow-400 font-bold' : ''
-                }`}
-              >
-                <span>
-                  #{index + 1} {player.displayName.substring(0, 12)}
-                  {player.playerId === playerId && ' ★'}
-                </span>
-                <span>{player.score}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Game Area - Falling Blocks */}
-      <div className="relative w-full h-screen">
-        {localBlocks
-          .filter((block) => block.playerId === playerId)
-          .map((block) => (
+          return (
             <div
-              key={block.id}
-              className="absolute text-4xl font-bold text-white bg-blue-600 rounded-lg px-6 py-3 shadow-lg transform -translate-x-1/2 -translate-y-1/2"
-              style={{
-                left: `${block.x}%`,
-                top: `${block.y}%`,
-              }}
+              key={player.playerId}
+              className={`relative bg-gradient-to-b from-gray-900/50 to-gray-800/50 rounded-lg border-2 overflow-hidden
+                ${isCurrentPlayer ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-gray-600'}`}
             >
-              {block.char}
-            </div>
-          ))}
+              {/* Player Header */}
+              <div className="absolute top-0 left-0 right-0 p-3 bg-black/70 backdrop-blur-sm z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${player.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div className="font-bold text-white">
+                      {player.displayName}
+                      {isCurrentPlayer && ' (You)'}
+                    </div>
+                  </div>
+                  <div className="text-sm text-white/80">
+                    Rank #{sortedPlayers.findIndex(p => p.playerId === player.playerId) + 1}
+                  </div>
+                </div>
 
-        {/* Bottom line indicator */}
-        <div className="absolute bottom-16 left-0 right-0 h-1 bg-red-500/50" />
-        <div className="absolute bottom-16 left-0 right-0 text-center text-red-400 text-sm font-bold">
-          DANGER ZONE
-        </div>
+                {/* Stats */}
+                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-white/80">
+                  <div>
+                    <div className="text-white/60">Score</div>
+                    <div className="font-bold text-white">{player.score}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">WPM</div>
+                    <div className="font-bold text-white">{Math.round(player.currentWPM)}</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Acc</div>
+                    <div className="font-bold text-white">{player.accuracy.toFixed(0)}%</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Lvl</div>
+                    <div className="font-bold text-white">{player.level}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Game Area */}
+              <div className="relative w-full h-full pt-24">
+                {playerBlocks.map((block) => (
+                  <div
+                    key={block.id}
+                    className={`absolute text-2xl md:text-3xl font-bold text-white rounded-lg px-4 py-2 shadow-lg transform -translate-x-1/2 -translate-y-1/2 transition-all
+                      ${isCurrentPlayer ? 'bg-blue-600' : 'bg-gray-600'}`}
+                    style={{
+                      left: `${block.x}%`,
+                      top: `${block.y}%`,
+                    }}
+                  >
+                    {block.char}
+                  </div>
+                ))}
+
+                {/* Danger Zone Indicator */}
+                <div className="absolute bottom-8 left-0 right-0 h-0.5 bg-red-500/30" />
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-red-400/50 text-xs font-bold">
+                  DANGER
+                </div>
+              </div>
+
+              {/* Current Player Indicator */}
+              {isCurrentPlayer && (
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold animate-pulse">
+                  ★ YOUR SCREEN ★
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Instructions */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-white/70 text-sm">
+      {/* Instructions Overlay */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-white/70 text-sm bg-black/50 px-4 py-2 rounded-lg backdrop-blur-sm">
         Type the letters before they reach the bottom!
       </div>
     </div>
