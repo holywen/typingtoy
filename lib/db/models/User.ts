@@ -17,6 +17,26 @@ interface UserDocument extends mongoose.Document {
     exerciseIndex: number;
     timestamp: Date;
   }>;
+
+  // Multiplayer fields
+  friends: mongoose.Types.ObjectId[];
+  friendRequests: Array<{
+    from: mongoose.Types.ObjectId;
+    createdAt: Date;
+  }>;
+  linkedDeviceIds: string[];
+  gameStats: {
+    totalGamesPlayed: number;
+    totalWins: number;
+    favoriteGame?: string;
+    skillRating: {
+      'falling-blocks': number;
+      'blink': number;
+      'typing-walk': number;
+      'falling-words': number;
+    };
+  };
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,6 +83,64 @@ const UserSchema = new Schema<UserDocument>(
         timestamp: Date,
       },
       default: new Map(),
+    },
+
+    // Multiplayer fields
+    friends: {
+      type: [Schema.Types.ObjectId],
+      ref: 'User',
+      default: [],
+    },
+    friendRequests: {
+      type: [{
+        from: {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }],
+      default: [],
+    },
+    linkedDeviceIds: {
+      type: [String],
+      default: [],
+    },
+    gameStats: {
+      totalGamesPlayed: {
+        type: Number,
+        default: 0,
+      },
+      totalWins: {
+        type: Number,
+        default: 0,
+      },
+      favoriteGame: {
+        type: String,
+        enum: ['falling-blocks', 'blink', 'typing-walk', 'falling-words', null],
+        default: null,
+      },
+      skillRating: {
+        'falling-blocks': {
+          type: Number,
+          default: 0,
+        },
+        'blink': {
+          type: Number,
+          default: 0,
+        },
+        'typing-walk': {
+          type: Number,
+          default: 0,
+        },
+        'falling-words': {
+          type: Number,
+          default: 0,
+        },
+      },
     },
   },
   {
