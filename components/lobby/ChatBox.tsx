@@ -57,13 +57,19 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
     setIsSending(true);
     setError(null);
 
+    const payload = {
+      type: roomId ? 'room' : 'lobby',
+      roomId,
+      message: inputMessage.trim(),
+    };
+
+    console.log('💬 Sending chat message:', payload);
+
     emitSocketEvent(
       'chat:send',
-      {
-        message: inputMessage.trim(),
-        roomId,
-      },
+      payload,
       (response) => {
+        console.log('💬 Chat response:', response);
         setIsSending(false);
         if (response.success) {
           setInputMessage('');

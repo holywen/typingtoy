@@ -2,13 +2,14 @@
 
 const PROFANITY_LIST = [
   // Common English profanity (partial list - expand as needed)
-  'fuck', 'shit', 'ass', 'bitch', 'damn', 'hell',
+  // Note: Removed short words like 'hell', 'ass', 'damn' to avoid false positives (hello, glass, condemn)
+  'fuck', 'shit', 'bitch',
   'asshole', 'bastard', 'crap', 'dick', 'piss',
-  
+
   // Add more languages as needed
   // Chinese
   '操', '妈', '傻逼', '草泥马',
-  
+
   // This is a basic list - consider using a library like 'bad-words' for production
 ];
 

@@ -7,13 +7,16 @@ import { ProfanityFilter } from '@/lib/utils/profanityFilter';
 
 export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void {
   // Send chat message
-  socket.on('chat:send', async (data) => {
+  socket.on('chat:send', async (data, callback) => {
+    console.log('💬 chat:send received:', data);
     try {
       const { playerId, displayName } = socket.data;
       const { type, roomId, message } = data;
+      console.log(`💬 From ${displayName} (${playerId}), type: ${type}, message: ${message}`);
 
       // Validate message
       if (!message || message.trim().length === 0) {
+        console.log('⚠️  Empty message, ignoring');
         return;
       }
 
@@ -76,16 +79,28 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
 
       // Broadcast message
       if (type === 'lobby') {
+        console.log(`📢 Broadcasting lobby message to all clients`);
         io.emit('chat:message', chatMessage);
       } else if (type === 'room' && roomId) {
+        console.log(`📢 Broadcasting room message to room ${roomId}`);
         io.to(roomId).emit('chat:message', chatMessage);
       }
+      console.log('✅ Chat message broadcast successfully');
+
+      // Call callback to acknowledge success
+      if (callback) {
+        callback({ success: true });
+      }
     } catch (error) {
-      console.error('Error handling chat message:', error);
+      console.error('❌ Error handling chat message:', error);
       socket.emit('chat:error', {
         code: 'INTERNAL_ERROR',
         message: 'Failed to send message',
       });
+      // Call callback with error
+      if (callback) {
+        callback({ success: false, error: 'Failed to send message' });
+      }
     }
   });
 }
