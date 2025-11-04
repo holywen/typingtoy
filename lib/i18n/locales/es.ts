@@ -5,6 +5,7 @@ export default {
     practice: 'Práctica',
     progress: 'Progreso',
     test: 'Prueba de Velocidad',
+    games: 'Juegos',
     signIn: 'Iniciar Sesión',
     signUp: 'Registrarse',
     signOut: 'Cerrar Sesión',
@@ -26,6 +27,8 @@ export default {
       practiceDesc: 'Practica con tu propio texto',
       progress: '📊 Progreso',
       progressDesc: 'Rastrea tu mejora e historial',
+      games: '🎮 Juegos',
+      gamesDesc: 'Practica mecanografía con juegos divertidos',
     },
   },
   tipsBanner: {
@@ -213,6 +216,7 @@ export default {
     sessionTypes: {
       lesson: 'Lección',
       speed_test: 'Prueba de Velocidad',
+    games: 'Juegos',
       custom: 'Práctica Personalizada',
       game: 'Juego',
     },

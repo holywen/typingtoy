@@ -5,6 +5,7 @@ export default {
     practice: '練習',
     progress: '進捗',
     test: 'スピードテスト',
+    games: 'ゲーム',
     signIn: 'ログイン',
     signUp: '登録',
     signOut: 'ログアウト',
@@ -26,6 +27,8 @@ export default {
       practiceDesc: '自分のテキストで練習',
       progress: '📊 進捗',
       progressDesc: '上達と履歴を追跡',
+      games: '🎮 ゲーム',
+      gamesDesc: '楽しいゲームでタイピング練習',
     },
   },
   tipsBanner: {
@@ -213,6 +216,7 @@ export default {
     sessionTypes: {
       lesson: 'レッスン',
       speed_test: 'スピードテスト',
+    games: 'ゲーム',
       custom: 'カスタム練習',
       game: 'ゲーム',
     },

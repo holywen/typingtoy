@@ -5,6 +5,7 @@ export default {
     practice: 'Pratique',
     progress: 'Progrès',
     test: 'Test de Vitesse',
+    games: 'Jeux',
     signIn: 'Se Connecter',
     signUp: 'S\'inscrire',
     signOut: 'Se Déconnecter',
@@ -26,6 +27,8 @@ export default {
       practiceDesc: 'Pratiquez avec votre propre texte',
       progress: '📊 Progrès',
       progressDesc: 'Suivez votre amélioration et votre historique',
+      games: '🎮 Jeux',
+      gamesDesc: 'Pratiquez la dactylographie avec des jeux amusants',
     },
   },
   tipsBanner: {
@@ -213,6 +216,7 @@ export default {
     sessionTypes: {
       lesson: 'Leçon',
       speed_test: 'Test de Vitesse',
+    games: 'Jeux',
       custom: 'Pratique Personnalisée',
       game: 'Jeu',
     },
