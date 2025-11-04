@@ -4,9 +4,13 @@ import { TypedServer, TypedSocket } from '../socketServer';
 import { RoomManager } from '../roomManager';
 import { FallingBlocksMultiplayer } from '@/lib/game-engine/FallingBlocksMultiplayer';
 import type { PlayerInput } from '@/lib/game-engine/GameState';
+import { AntiCheatValidator } from '../antiCheat';
 
 // Store active game instances
 const activeGames = new Map<string, FallingBlocksMultiplayer>();
+
+// Store last keystroke timestamp for each player (for anti-cheat)
+const playerLastKeystroke = new Map<string, number>();
 
 /**
  * Start a game for a given room
@@ -163,6 +167,30 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
         return;
       }
 
+      // Anti-cheat: Validate keystroke timing
+      const now = Date.now();
+      const lastTimestamp = playerLastKeystroke.get(playerId);
+
+      const validation = AntiCheatValidator.validateKeystroke({
+        char: input.char,
+        timestamp: now,
+        previousTimestamp: lastTimestamp,
+        expectedChar: input.char, // Game engine will validate correctness
+      });
+
+      if (!validation.valid) {
+        AntiCheatValidator.logSuspiciousActivity(playerId, displayName, validation);
+        socket.emit('game:input:rejected', {
+          reason: validation.reason || 'Anti-cheat validation failed',
+          input,
+        });
+        console.log(`⚠️ Anti-cheat rejected input from ${displayName}: ${validation.reason}`);
+        return;
+      }
+
+      // Update last keystroke timestamp
+      playerLastKeystroke.set(playerId, now);
+
       // Process player input
       console.log(`🎮 Processing input from ${playerId}:`, input);
       const result = game.handlePlayerInput(playerId, input);
@@ -192,6 +220,9 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
   // Player disconnected during game
   socket.on('disconnect', async () => {
     try {
+      // Clean up anti-cheat data
+      playerLastKeystroke.delete(playerId);
+
       // Find if player was in any active game
       for (const [roomId, game] of activeGames.entries()) {
         const playerState = game.getPlayerState(playerId);
