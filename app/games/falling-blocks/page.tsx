@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { lessons } from '@/lib/data/lessons';
+import { lessonsData } from '@/lib/data/lessons';
 
 interface FallingBlock {
   id: number;
@@ -28,10 +28,9 @@ export default function FallingBlocksGame() {
   // Get characters from selected lesson
   useEffect(() => {
     if (selectedLesson !== null) {
-      const lesson = lessons.find(l => l.id === selectedLesson);
+      const lesson = lessonsData.find(l => l.lessonNumber === selectedLesson);
       if (lesson) {
-        const lessonChars = lesson.focusKeys.split('');
-        setChars(lessonChars);
+        setChars(lesson.focusKeys);
       }
     } else {
       // All keys
@@ -168,21 +167,21 @@ export default function FallingBlocksGame() {
                     {t.games?.allKeys || 'All Keys'}
                   </div>
                 </button>
-                {lessons.map(lesson => (
+                {lessonsData.map(lesson => (
                   <button
-                    key={lesson.id}
-                    onClick={() => setSelectedLesson(lesson.id)}
+                    key={lesson.lessonNumber}
+                    onClick={() => setSelectedLesson(lesson.lessonNumber)}
                     className={`p-4 rounded-lg border-2 transition-all ${
-                      selectedLesson === lesson.id
+                      selectedLesson === lesson.lessonNumber
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
                         : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
                     }`}
                   >
                     <div className="font-semibold text-gray-900 dark:text-white">
-                      Lesson {lesson.id}
+                      Lesson {lesson.lessonNumber}
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                      {lesson.focusKeys}
+                      {lesson.focusKeys.join(' ')}
                     </div>
                   </button>
                 ))}
