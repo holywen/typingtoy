@@ -7,6 +7,7 @@ import { initSocketClient, getSocket, emitSocketEvent, onSocketEvent } from '@/l
 import { getDeviceIdentity } from '@/lib/services/deviceId';
 import ChatBox from '@/components/lobby/ChatBox';
 import MultiplayerFallingBlocks from '@/components/multiplayer/MultiplayerFallingBlocks';
+import MultiplayerBlink from '@/components/multiplayer/MultiplayerBlink';
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -218,23 +219,39 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const canStart = isHost && allNonHostReady && (room?.players.length || 0) >= 2;
 
   // If game is active, show game component
-  if (gameActive && room?.gameType === 'falling-blocks') {
-    return (
-      <MultiplayerFallingBlocks
-        roomId={roomId}
-        playerId={playerId}
-        displayName={displayName}
-        onGameEnd={() => {
-          setGameActive(false);
-          // Refresh room state
-          emitSocketEvent('room:join', { roomId }, (response: any) => {
-            if (response.success) {
-              setRoom(response.room);
-            }
-          });
-        }}
-      />
-    );
+  if (gameActive) {
+    const handleGameEnd = () => {
+      setGameActive(false);
+      // Refresh room state
+      emitSocketEvent('room:join', { roomId }, (response: any) => {
+        if (response.success) {
+          setRoom(response.room);
+        }
+      });
+    };
+
+    switch (room?.gameType) {
+      case 'blink':
+        return (
+          <MultiplayerBlink
+            roomId={roomId}
+            playerId={playerId}
+            displayName={displayName}
+            onGameEnd={handleGameEnd}
+          />
+        );
+
+      case 'falling-blocks':
+      default:
+        return (
+          <MultiplayerFallingBlocks
+            roomId={roomId}
+            playerId={playerId}
+            displayName={displayName}
+            onGameEnd={handleGameEnd}
+          />
+        );
+    }
   }
 
   return (

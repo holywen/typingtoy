@@ -3,11 +3,13 @@
 import { TypedServer, TypedSocket } from '../socketServer';
 import { RoomManager } from '../roomManager';
 import { FallingBlocksMultiplayer } from '@/lib/game-engine/FallingBlocksMultiplayer';
+import { BlinkMultiplayer } from '@/lib/game-engine/BlinkMultiplayer';
+import { BaseMultiplayerGame } from '@/lib/game-engine/BaseMultiplayerGame';
 import type { PlayerInput } from '@/lib/game-engine/GameState';
 import { AntiCheatValidator } from '../antiCheat';
 
-// Store active game instances
-const activeGames = new Map<string, FallingBlocksMultiplayer>();
+// Store active game instances (can be any game type)
+const activeGames = new Map<string, BaseMultiplayerGame>();
 
 // Store last keystroke timestamp for each player (for anti-cheat)
 const playerLastKeystroke = new Map<string, number>();
@@ -24,21 +26,43 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
       return;
     }
 
-    console.log(`🎮 Starting FallingBlocks game for room ${roomId}`);
+    const gameType = room.gameType || 'falling-blocks';
+    console.log(`🎮 Starting ${gameType} game for room ${roomId}`);
 
-    // Create game instance
+    // Create game instance based on game type
     const gameConfig = {
       lessonId: room.settings?.lessonId,
       difficulty: room.settings?.difficulty,
       timeLimit: room.settings?.timeLimit || 120, // Default 2 minutes
+      totalChars: room.settings?.totalChars || 50, // For Blink
+      charTimeLimit: room.settings?.charTimeLimit || 2000, // For Blink (2 seconds per char)
     };
 
-    const game = new FallingBlocksMultiplayer({
-      roomId,
-      players: room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName })),
-      seed: room.settings?.seed || Date.now(),
-      settings: gameConfig,
-    });
+    const playerList = room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName }));
+    const seed = room.settings?.seed || Date.now();
+
+    let game: BaseMultiplayerGame;
+
+    switch (gameType) {
+      case 'blink':
+        game = new BlinkMultiplayer({
+          roomId,
+          players: playerList,
+          seed,
+          settings: gameConfig,
+        });
+        break;
+
+      case 'falling-blocks':
+      default:
+        game = new FallingBlocksMultiplayer({
+          roomId,
+          players: playerList,
+          seed,
+          settings: gameConfig,
+        });
+        break;
+    }
 
     activeGames.set(roomId, game);
 
@@ -106,19 +130,41 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
         return;
       }
 
-      // Create game instance
+      // Create game instance based on game type
+      const gameType = room.gameType || 'falling-blocks';
       const gameConfig = {
         lessonId: room.settings?.lessonId,
         difficulty: room.settings?.difficulty,
         timeLimit: room.settings?.timeLimit || 120, // Default 2 minutes
+        totalChars: room.settings?.totalChars || 50, // For Blink
+        charTimeLimit: room.settings?.charTimeLimit || 2000, // For Blink
       };
 
-      const game = new FallingBlocksMultiplayer({
-        roomId,
-        players: room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName })),
-        seed: room.settings?.seed || Date.now(),
-        settings: gameConfig,
-      });
+      const playerList = room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName }));
+      const seed = room.settings?.seed || Date.now();
+
+      let game: BaseMultiplayerGame;
+
+      switch (gameType) {
+        case 'blink':
+          game = new BlinkMultiplayer({
+            roomId,
+            players: playerList,
+            seed,
+            settings: gameConfig,
+          });
+          break;
+
+        case 'falling-blocks':
+        default:
+          game = new FallingBlocksMultiplayer({
+            roomId,
+            players: playerList,
+            seed,
+            settings: gameConfig,
+          });
+          break;
+      }
 
       activeGames.set(roomId, game);
 

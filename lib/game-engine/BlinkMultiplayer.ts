@@ -323,15 +323,19 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
 
   serialize(): SerializedGameState {
     const baseState = super.serialize();
+    const blinkState = this.gameState.gameSpecificState as BlinkGameState;
 
-    // Include Blink-specific state
+    // Include Blink-specific state but hide future characters
     return {
       ...baseState,
       gameSpecificState: {
-        ...this.gameState.gameSpecificState,
-        // Don't send the entire sequence to prevent cheating
-        // Only send current char and stats
-        charSequence: undefined, // Hide future characters
+        currentChar: blinkState.currentChar,
+        charStartTime: blinkState.charStartTime,
+        timeLimit: blinkState.timeLimit,
+        currentCharIndex: blinkState.currentCharIndex,
+        totalChars: blinkState.totalChars,
+        charHistory: blinkState.charHistory,
+        // Don't send charSequence to prevent cheating
       }
     };
   }

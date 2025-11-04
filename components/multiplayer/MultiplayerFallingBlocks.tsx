@@ -225,7 +225,7 @@ export default function MultiplayerFallingBlocks({
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-900 to-purple-900 p-4">
       {/* Split-screen Grid for 2-4 players */}
-      <div className={`grid ${gridLayout} gap-4 h-full`}>
+      <div className={`grid ${gridLayout} gap-4 min-h-[calc(100vh-2rem)]`}>
         {sortedPlayers.map((player) => {
           const isCurrentPlayer = player.playerId === playerId;
           const playerBlocks = localBlocks.filter((block) => block.playerId === player.playerId);
@@ -233,7 +233,7 @@ export default function MultiplayerFallingBlocks({
           return (
             <div
               key={player.playerId}
-              className={`relative bg-gradient-to-b from-gray-900/50 to-gray-800/50 rounded-lg border-2 overflow-hidden
+              className={`relative bg-gradient-to-b from-gray-900/50 to-gray-800/50 rounded-lg border-2 overflow-hidden min-h-[500px] flex flex-col
                 ${isCurrentPlayer ? 'border-yellow-400 shadow-lg shadow-yellow-400/50' : 'border-gray-600'}`}
             >
               {/* Player Header */}
@@ -273,7 +273,7 @@ export default function MultiplayerFallingBlocks({
               </div>
 
               {/* Game Area */}
-              <div className="relative w-full h-full pt-24">
+              <div className="relative w-full flex-1 mt-24">
                 {playerBlocks.map((block) => (
                   <div
                     key={block.id}
