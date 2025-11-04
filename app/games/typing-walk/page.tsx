@@ -28,7 +28,7 @@ export default function TypingWalkGame() {
   const [playerRow, setPlayerRow] = useState(0);
   const [playerCol, setPlayerCol] = useState(1);
   const [currentPath, setCurrentPath] = useState<Array<{row: number, col: number}>>([]);
-  const timerRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Get characters from selected lesson
   useEffect(() => {

@@ -25,7 +25,7 @@ export default function FallingWordsGame() {
   const [chars, setChars] = useState<string[]>([]);
   const [wordList, setWordList] = useState<string[]>([]);
   const wordIdRef = useRef(0);
-  const gameLoopRef = useRef<number>();
+  const gameLoopRef = useRef<number | undefined>(undefined);
 
   // Get characters from selected lesson and generate word list
   useEffect(() => {

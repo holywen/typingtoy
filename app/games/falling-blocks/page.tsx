@@ -23,7 +23,7 @@ export default function FallingBlocksGame() {
   const [blocks, setBlocks] = useState<FallingBlock[]>([]);
   const [chars, setChars] = useState<string[]>([]);
   const blockIdRef = useRef(0);
-  const gameLoopRef = useRef<number>();
+  const gameLoopRef = useRef<number | undefined>(undefined);
 
   // Get characters from selected lesson
   useEffect(() => {
