@@ -61,6 +61,13 @@ export default function BlinkGame() {
   }, [gameStarted, gameOver, currentChar]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
+    // Handle Enter key on game over screen
+    if (gameOver && e.key === 'Enter') {
+      e.preventDefault();
+      startGame();
+      return;
+    }
+
     if (!gameStarted || gameOver || !currentChar) return;
 
     const key = e.key.toLowerCase();

@@ -115,6 +115,13 @@ export default function TypingWalkGame() {
   }, [gameStarted, gameOver]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
+    // Handle Enter key on game over/win screen
+    if ((gameOver || playerCol === GRID_COLS - 1) && e.key === 'Enter') {
+      e.preventDefault();
+      startGame();
+      return;
+    }
+
     if (!gameStarted || gameOver || grid.length === 0) return;
 
     const key = e.key.toLowerCase();

@@ -120,6 +120,13 @@ export default function FallingWordsGame() {
   }, [gameStarted, gameOver, level, spawnWord, gameLoop]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
+    // Handle Enter key on game over screen
+    if (gameOver && e.key === 'Enter') {
+      e.preventDefault();
+      startGame();
+      return;
+    }
+
     if (!gameStarted || gameOver) return;
 
     const key = e.key.toLowerCase();
