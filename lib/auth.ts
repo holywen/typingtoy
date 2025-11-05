@@ -61,10 +61,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: '/auth/signin',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, trigger }) {
+      // On sign in (when user object is available)
       if (user) {
         token.id = user.id;
       }
+
+      // For OAuth providers, if id is not set, use sub (subject) from token
+      if (!token.id && token.sub) {
+        token.id = token.sub;
+      }
+
       return token;
     },
     async session({ session, token }) {
