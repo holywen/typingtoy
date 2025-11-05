@@ -182,6 +182,15 @@ export default function MultiplayerBlink({
   const currentPlayerState = playerStates.get(playerId);
   const sortedPlayers = Array.from(playerStates.values()).sort((a, b) => b.score - a.score);
 
+  // For split-screen: arrange players so current player is always on the left
+  const arrangedPlayers = gameEnded
+    ? sortedPlayers // Show rankings when game ends
+    : (() => {
+        const current = sortedPlayers.find(p => p.playerId === playerId);
+        const others = sortedPlayers.filter(p => p.playerId !== playerId);
+        return current ? [current, ...others] : sortedPlayers;
+      })();
+
   if (!gameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-900 to-indigo-900">
@@ -299,7 +308,7 @@ export default function MultiplayerBlink({
                      timerPercent > 25 ? 'bg-yellow-500' : 'bg-red-500';
 
   // Determine grid layout based on player count
-  const playerCount = sortedPlayers.length;
+  const playerCount = arrangedPlayers.length;
   const gridLayout = playerCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
                      playerCount === 3 ? 'grid-cols-1 md:grid-cols-3' :
                      'grid-cols-2 md:grid-cols-2';
@@ -308,9 +317,11 @@ export default function MultiplayerBlink({
     <div className="min-h-screen bg-gradient-to-b from-purple-900 to-indigo-900 p-4">
       {/* Split-screen Grid for 2-4 players */}
       <div className={`grid ${gridLayout} gap-4 min-h-[calc(100vh-2rem)]`}>
-        {sortedPlayers.map((player, index) => {
+        {arrangedPlayers.map((player, displayIndex) => {
           const isCurrentPlayer = player.playerId === playerId;
           const playerData = player.gameSpecificData as BlinkPlayerData;
+          // Find actual rank in sorted list
+          const actualRank = sortedPlayers.findIndex(p => p.playerId === player.playerId) + 1;
 
           return (
             <div
@@ -329,7 +340,7 @@ export default function MultiplayerBlink({
                     </div>
                   </div>
                   <div className="text-sm text-white/80">
-                    Rank #{index + 1}
+                    Rank #{actualRank}
                   </div>
                 </div>
 
