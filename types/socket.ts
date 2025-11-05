@@ -118,6 +118,15 @@ export interface ServerToClientEvents {
   'player:connected': (data: { playerId: string }) => void;
 
   'player:disconnected': (data: { playerId: string }) => void;
+
+  // Lobby events
+  'lobby:players': (data: {
+    players: Array<{
+      playerId: string;
+      displayName: string;
+      status: 'online' | 'in-game' | 'in-room';
+    }>;
+  }) => void;
 }
 
 // Inter-server Events (for Socket.IO clusters)
