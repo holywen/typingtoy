@@ -53,6 +53,7 @@ COPY --from=builder /app/server.ts ./server.ts
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/types ./types
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/tsconfig.server.json ./tsconfig.server.json
 
 # Copy node_modules from deps stage (production dependencies only)
 COPY --from=deps /app/node_modules ./node_modules
@@ -78,4 +79,4 @@ ENV HOSTNAME="0.0.0.0"
 ENV PORT=3000
 
 # Start the application with custom server
-CMD ["npx", "ts-node", "server.ts"]
+CMD ["node_modules/.bin/ts-node", "-r", "tsconfig-paths/register", "--project", "tsconfig.server.json", "server.ts"]
