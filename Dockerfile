@@ -48,16 +48,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Copy custom server and its dependencies
-COPY --from=builder /app/server.ts ./server.ts
-COPY --from=builder /app/lib ./lib
-COPY --from=builder /app/types ./types
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
-COPY --from=builder /app/tsconfig.server.json ./tsconfig.server.json
+# Copy compiled server and dependencies from dist folder
+COPY --from=builder /app/dist ./dist
 
-# Copy all node_modules from builder (includes both production and dev dependencies)
-# We need all dependencies because ts-node requires many dev dependencies at runtime
-COPY --from=builder /app/node_modules ./node_modules
+# Copy production dependencies only
+COPY --from=deps /app/node_modules ./node_modules
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
@@ -72,5 +67,5 @@ EXPOSE 3000
 ENV HOSTNAME="0.0.0.0"
 ENV PORT=3000
 
-# Start the application with custom server
-CMD ["node_modules/.bin/ts-node", "-r", "tsconfig-paths/register", "--project", "tsconfig.server.json", "server.ts"]
+# Start the application with compiled JavaScript
+CMD ["node", "dist/server.js"]
