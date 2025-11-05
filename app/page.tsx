@@ -88,7 +88,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto mt-16 grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 text-center">
+        <div className="max-w-6xl mx-auto mt-16 grid md:grid-cols-2 lg:grid-cols-3 gap-6 text-center">
           <a href="/lessons" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
             <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.lessons}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.lessonsDesc}</p>
@@ -96,6 +96,10 @@ export default function Home() {
           <a href="/games" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
             <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.games}</h3>
             <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.gamesDesc}</p>
+          </a>
+          <a href="/multiplayer" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
+            <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.multiplayer}</h3>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">{t.home.features.multiplayerDesc}</p>
           </a>
           <a href="/test" className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
             <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">{t.home.features.speedTests}</h3>

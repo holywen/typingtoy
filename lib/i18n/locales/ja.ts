@@ -29,6 +29,8 @@ export default {
       progressDesc: '上達と履歴を追跡',
       games: '🎮 ゲーム',
       gamesDesc: '楽しいゲームでタイピング練習',
+      multiplayer: '🌐 マルチプレイヤー',
+      multiplayerDesc: 'リアルタイムで対戦',
     },
   },
   tipsBanner: {

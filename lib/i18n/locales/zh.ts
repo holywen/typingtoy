@@ -29,6 +29,8 @@ export default {
       progressDesc: '追踪您的进步和历史记录',
       games: '🎮 游戏',
       gamesDesc: '通过有趣的游戏练习打字',
+      multiplayer: '🌐 多人对战',
+      multiplayerDesc: '与其他玩家实时竞技',
     },
   },
   tipsBanner: {

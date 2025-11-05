@@ -29,6 +29,8 @@ export default {
       progressDesc: 'Track your improvement and history',
       games: '🎮 Games',
       gamesDesc: 'Practice typing with fun games',
+      multiplayer: '🌐 Multiplayer',
+      multiplayerDesc: 'Compete with players in real-time',
     },
   },
   tipsBanner: {

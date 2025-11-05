@@ -29,6 +29,8 @@ export default {
       progressDesc: 'Rastrea tu mejora e historial',
       games: '🎮 Juegos',
       gamesDesc: 'Practica mecanografía con juegos divertidos',
+      multiplayer: '🌐 Multijugador',
+      multiplayerDesc: 'Compite con otros jugadores en tiempo real',
     },
   },
   tipsBanner: {

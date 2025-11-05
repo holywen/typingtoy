@@ -29,6 +29,8 @@ export default {
       progressDesc: 'Suivez votre amélioration et votre historique',
       games: '🎮 Jeux',
       gamesDesc: 'Pratiquez la dactylographie avec des jeux amusants',
+      multiplayer: '🌐 Multijoueur',
+      multiplayerDesc: 'Affrontez des joueurs en temps réel',
     },
   },
   tipsBanner: {
