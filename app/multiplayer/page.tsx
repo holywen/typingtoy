@@ -29,6 +29,17 @@ export default function MultiplayerPage() {
           deviceId: identity.deviceId,
         });
 
+        // Check if socket is already connected with the same auth
+        const existingSocket = getSocket();
+        if (existingSocket?.connected) {
+          const currentAuth = existingSocket.auth as any;
+          if (currentAuth?.userId === session?.user?.id) {
+            console.log('✅ Socket already connected with same userId, skipping re-init');
+            setIsConnecting(false);
+            return;
+          }
+        }
+
         // Initialize socket connection with userId from session if available
         const socket = initSocketClient({
           userId: session?.user?.id,
