@@ -17,16 +17,23 @@ export interface SocketClientOptions {
 
 // Initialize socket connection
 export function initSocketClient(options: SocketClientOptions): TypedClientSocket {
-  // If socket exists and is connected, return it
-  if (socket && socket.connected) {
-    return socket;
-  }
+  // If socket exists, check if auth credentials have changed
+  if (socket) {
+    const currentAuth = socket.auth as SocketClientOptions;
+    const authChanged = currentAuth.userId !== options.userId;
 
-  // If socket exists but is disconnected, reconnect it
-  if (socket && !socket.connected) {
-    console.log('🔄 Reconnecting existing socket...');
-    socket.connect();
-    return socket;
+    if (authChanged) {
+      console.log('🔄 Auth changed, disconnecting old socket and creating new one');
+      socket.disconnect();
+      socket = null;
+    } else if (socket.connected) {
+      console.log('✅ Socket already connected with same auth');
+      return socket;
+    } else if (!socket.connected) {
+      console.log('🔄 Reconnecting existing socket...');
+      socket.connect();
+      return socket;
+    }
   }
 
   // Create new socket connection
