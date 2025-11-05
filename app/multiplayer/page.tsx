@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { getDeviceIdentity } from '@/lib/services/deviceId';
 import { initSocketClient, getSocket, disconnectSocket } from '@/lib/services/socketClient';
 import GameLobby from '@/components/lobby/GameLobby';
 
 export default function MultiplayerPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [deviceIdentity, setDeviceIdentity] = useState<any>(null);
@@ -19,10 +21,11 @@ export default function MultiplayerPage() {
         const identity = await getDeviceIdentity();
         setDeviceIdentity(identity);
 
-        // Initialize socket connection
+        // Initialize socket connection with userId from session if available
         const socket = initSocketClient({
+          userId: session?.user?.id,
           deviceId: identity.deviceId,
-          displayName: identity.displayName,
+          displayName: session?.user?.name || identity.displayName,
         });
 
         // If already connected, resolve immediately
@@ -67,7 +70,7 @@ export default function MultiplayerPage() {
 
     // Note: We don't disconnect the socket on unmount because
     // the user might be navigating to a room page that needs the socket
-  }, []);
+  }, [session]);
 
   if (isConnecting) {
     return (
