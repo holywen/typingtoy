@@ -49,6 +49,11 @@ The latest code fixes OAuth login by:
 2. Using `token.sub` as fallback in `lib/auth.ts` JWT callback
 3. Passing userId to Socket.IO client initialization
 4. Server validates userId in production before allowing room creation
+5. **CRITICAL FIX (commit 53d117c)**: Changed `useEffect` dependency from `[session]` to `[session?.user?.id]`
+   - Prevents multiple socket reconnections during OAuth login
+   - OAuth session object changes multiple times (undefined -> loading -> populated)
+   - Only re-initializing socket when userId actually changes, not on every session object update
+   - This eliminates "Connection Failed" errors for OAuth users
 
 ## Expected Server Logs After Fix
 
