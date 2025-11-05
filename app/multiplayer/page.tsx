@@ -49,16 +49,23 @@ export default function MultiplayerPage() {
 
         // If already connected, resolve immediately
         if (socket.connected) {
-          console.log('✅ Socket already connected');
+          console.log('✅ Socket already connected, no need to wait');
           setIsConnecting(false);
           return;
         }
 
+        console.log('⏳ Waiting for socket connection...');
+
         // Wait for connection
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('Connection timeout')), 10000);
+          const timeout = setTimeout(() => {
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
+            reject(new Error('Connection timeout'));
+          }, 10000);
 
           const onConnect = () => {
+            console.log('✅ Socket connect event received');
             clearTimeout(timeout);
             socket.off('connect', onConnect);
             socket.off('connect_error', onError);
@@ -67,6 +74,7 @@ export default function MultiplayerPage() {
           };
 
           const onError = (error: Error) => {
+            console.error('❌ Socket connect_error event received:', error);
             clearTimeout(timeout);
             socket.off('connect', onConnect);
             socket.off('connect_error', onError);
@@ -77,6 +85,16 @@ export default function MultiplayerPage() {
 
           socket.on('connect', onConnect);
           socket.on('connect_error', onError);
+
+          // Check if socket connected while we were setting up listeners
+          if (socket.connected) {
+            console.log('✅ Socket connected during listener setup');
+            clearTimeout(timeout);
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onError);
+            setIsConnecting(false);
+            resolve();
+          }
         });
       } catch (error) {
         console.error('Failed to initialize:', error);
