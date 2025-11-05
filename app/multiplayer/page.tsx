@@ -9,12 +9,17 @@ import GameLobby from '@/components/lobby/GameLobby';
 
 export default function MultiplayerPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [deviceIdentity, setDeviceIdentity] = useState<any>(null);
 
   useEffect(() => {
+    // Don't initialize while session is still loading
+    if (status === 'loading') {
+      return;
+    }
+
     async function initialize() {
       try {
         // Get device identity
@@ -107,7 +112,7 @@ export default function MultiplayerPage() {
 
     // Note: We don't disconnect the socket on unmount because
     // the user might be navigating to a room page that needs the socket
-  }, [session?.user?.id]); // Only re-run when userId changes, not entire session object
+  }, [session?.user?.id, status]); // Wait for session to load, then init once with final userId
 
   if (isConnecting) {
     return (
