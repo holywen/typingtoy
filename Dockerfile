@@ -48,6 +48,15 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Copy custom server and its dependencies
+COPY --from=builder /app/server.ts ./server.ts
+COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/types ./types
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
+
+# Copy node_modules for ts-node and TypeScript
+COPY --from=builder /app/node_modules ./node_modules
+
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
 
@@ -61,5 +70,5 @@ EXPOSE 3000
 ENV HOSTNAME="0.0.0.0"
 ENV PORT=3000
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application with custom server
+CMD ["npx", "ts-node", "server.ts"]
