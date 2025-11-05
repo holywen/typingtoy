@@ -5,6 +5,7 @@ import next from 'next';
 import { initSocketServer } from './lib/services/socketServer';
 
 const dev = process.env.NODE_ENV !== 'production';
+// Server listens on localhost:3000 by default (no need to set PORT/HOSTNAME env vars)
 const hostname = process.env.HOSTNAME || 'localhost';
 const port = parseInt(process.env.PORT || '3000', 10);
 

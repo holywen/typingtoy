@@ -24,13 +24,14 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
 
-      # Redis (optional - if using Redis for caching)
-      # - REDIS_URL=redis://redis:6379
+      # Redis (required for multiplayer features)
+      - REDIS_URL=redis://redis:6379
 
       # Node environment
       - NODE_ENV=production
     depends_on:
       - mongodb
+      - redis
     networks:
       - typingtoy-network
     volumes:
@@ -55,18 +56,18 @@ services:
     networks:
       - typingtoy-network
 
-  # Redis (Optional - uncomment if you want to use Redis for caching/sessions)
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: typingtoy-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   volumes:
-  #     - redis-data:/data
-  #   networks:
-  #     - typingtoy-network
-  #   command: redis-server --appendonly yes
+  # Redis (Required for multiplayer features)
+  redis:
+    image: redis:7-alpine
+    container_name: typingtoy-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - typingtoy-network
+    command: redis-server --appendonly yes
 
   # MongoDB Express (Optional - Web-based MongoDB admin interface)
   # mongo-express:
@@ -107,9 +108,9 @@ volumes:
       type: none
       o: bind
       device: ./app-data
-  # redis-data:
-  #   driver: local
-  #   driver_opts:
-  #      type: none
-  #      o: bind
-  #      device: ./redis-data
+  redis-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./redis-data

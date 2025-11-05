@@ -7,14 +7,36 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
   // Room creation
   socket.on('room:create', async (data, callback) => {
     try {
-      const { playerId, displayName } = socket.data;
+      const { playerId, displayName, userId } = socket.data;
 
       console.log(`🏗️  room:create request from ${displayName}: gameType="${data.gameType}", roomName="${data.roomName}"`);
+
+      // Restriction 1: In production, only authenticated users can create rooms
+      const isProduction = process.env.NODE_ENV === 'production';
+      if (isProduction && !userId) {
+        callback({
+          success: false,
+          error: 'You must be logged in to create a room. Please sign in to continue.'
+        });
+        return;
+      }
 
       // Check if player is already in a room
       const existingRoom = await RoomManager.getRoomByPlayerId(playerId);
       if (existingRoom) {
         callback({ success: false, error: 'Already in a room' });
+        return;
+      }
+
+      // Restriction 2: Each user can only host ONE room at a time
+      // Use userId for authenticated users, deviceId for guests (in dev/test mode)
+      const hostIdentifier = userId || playerId;
+      const hostedRoom = await RoomManager.getRoomByHostId(hostIdentifier);
+      if (hostedRoom) {
+        callback({
+          success: false,
+          error: 'You already have an active room. Please close it first.'
+        });
         return;
       }
 

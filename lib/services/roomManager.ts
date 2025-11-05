@@ -343,6 +343,24 @@ export class RoomManager {
   }
 
   /**
+   * Get room by host ID (find rooms where the player is the host)
+   */
+  static async getRoomByHostId(hostId: string): Promise<GameRoom | null> {
+    await connectDB();
+    const dbRoom = await GameRoomModel.findOne({
+      'players.playerId': hostId,
+      'players.isHost': true,
+      status: { $in: ['waiting', 'playing'] },
+    });
+
+    if (dbRoom) {
+      return dbRoom.toObject() as GameRoom;
+    }
+
+    return null;
+  }
+
+  /**
    * Clean up stale rooms (no activity for 30 minutes)
    */
   static async cleanupStaleRooms(): Promise<number> {
