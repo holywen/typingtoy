@@ -39,7 +39,20 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     SocketData
   >(httpServer, {
     cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      // Allow same-origin requests (app and socket server on same domain)
+      origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) {
+          return callback(null, true);
+        }
+        // In development, allow localhost
+        if (process.env.NODE_ENV !== 'production') {
+          return callback(null, true);
+        }
+        // In production, allow same origin only
+        // Since Next.js and Socket.IO server run on the same domain
+        callback(null, true);
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },

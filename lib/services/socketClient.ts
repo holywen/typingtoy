@@ -30,7 +30,11 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
   }
 
   // Create new socket connection
-  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+  // In production, socket connects to same origin (window.location.origin)
+  // In development, use NEXT_PUBLIC_SOCKET_URL or default to localhost:3000
+  const socketUrl = typeof window !== 'undefined' && process.env.NODE_ENV === 'production'
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000');
 
   socket = io(socketUrl, {
     auth: {
