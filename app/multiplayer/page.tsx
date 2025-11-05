@@ -21,6 +21,14 @@ export default function MultiplayerPage() {
         const identity = await getDeviceIdentity();
         setDeviceIdentity(identity);
 
+        // Debug: Log session info
+        console.log('🔍 Session info:', {
+          hasSession: !!session,
+          userId: session?.user?.id,
+          userName: session?.user?.name,
+          deviceId: identity.deviceId,
+        });
+
         // Initialize socket connection with userId from session if available
         const socket = initSocketClient({
           userId: session?.user?.id,
