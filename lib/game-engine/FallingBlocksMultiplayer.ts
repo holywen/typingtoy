@@ -341,13 +341,9 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
    */
   getPlayerView(playerId: string): FallingBlock[] {
     const state = this.gameState.gameSpecificState as FallingBlocksGameState;
-    
+
     // All players see all blocks (shared view)
-    return state.blocks.map(block => ({
-      ...block,
-      // Indicate if this player is targeting this block
-      targetPlayerId: block.targetPlayerId === playerId ? playerId : undefined,
-    }));
+    return state.blocks;
   }
   
   /**

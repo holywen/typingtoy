@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
-import type { SerializedGameState, PlayerState as GamePlayerState } from '@/lib/game-engine/GameState';
+import type { SerializedGameState } from '@/lib/game-engine/GameState';
+import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { FallingWordsGameState, FallingWordsPlayerData, FallingWord } from '@/lib/game-engine/FallingWordsMultiplayer';
 
 interface MultiplayerFallingWordsProps {
@@ -33,6 +34,7 @@ export default function MultiplayerFallingWords({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
+      console.log('📥 [FALLING WORDS] Received game:state');
       setGameState(state);
       setGameStarted(true);
 
@@ -44,19 +46,18 @@ export default function MultiplayerFallingWords({
       setPlayerStates(newPlayerStates);
     };
 
-    const handleGameEnded = (data: { winner: string | null; finalState: SerializedGameState }) => {
+    const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
-      setGameState(data.finalState);
-      console.log('📝 Falling Words game ended, winner:', data.winner);
+      console.log('📝 Falling Words game ended, winner:', data.winner, 'finalState:', data.finalState);
     };
 
-    onSocketEvent('game:state', handleGameState);
-    onSocketEvent('game:ended', handleGameEnded);
+    const cleanupState = onSocketEvent('game:state', handleGameState);
+    const cleanupEnded = onSocketEvent('game:ended', handleGameEnded);
 
     return () => {
-      socket.off('game:state', handleGameState);
-      socket.off('game:ended', handleGameEnded);
+      cleanupState();
+      cleanupEnded();
     };
   }, [roomId, playerId]);
 

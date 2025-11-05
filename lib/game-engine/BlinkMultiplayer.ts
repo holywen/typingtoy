@@ -66,8 +66,9 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
   }
 
   protected initGame(): void {
-    const totalChars = this.settings.totalChars || 50; // Default 50 characters
-    const timeLimit = this.settings.charTimeLimit || 2000; // Default 2 seconds per char
+    const customSettings = this.settings.customRules as { totalChars?: number; charTimeLimit?: number } | undefined;
+    const totalChars = customSettings?.totalChars || 50; // Default 50 characters
+    const timeLimit = customSettings?.charTimeLimit || 2000; // Default 2 seconds per char
 
     // Generate character sequence using RNG for fairness
     const chars = 'abcdefghijklmnopqrstuvwxyz'.split('');
@@ -115,7 +116,7 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
     console.log(`🎮 Blink game started for room ${this.roomId}`);
   }
 
-  protected updateGameState(deltaTime: number): void {
+  public updateGameState(deltaTime: number): void {
     const state = this.gameState.gameSpecificState as BlinkGameState;
     const now = Date.now();
 
@@ -254,17 +255,6 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
 
       return {
         success: true,
-        points: totalPoints,
-        feedback: {
-          message: `Correct! +${totalPoints} points`,
-          type: 'correct',
-          details: {
-            basePoints: points,
-            bonusPoints: bonus,
-            streak: playerData.streak,
-            responseTime,
-          }
-        }
       };
     } else {
       // Wrong answer
@@ -278,14 +268,6 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       return {
         success: false,
         error: 'Wrong character',
-        feedback: {
-          message: 'Wrong! Streak broken',
-          type: 'error',
-          details: {
-            expected: currentChar,
-            actual: key,
-          }
-        }
       };
     }
   }

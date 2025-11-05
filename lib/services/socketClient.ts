@@ -97,13 +97,14 @@ export function emitSocketEvent<K extends keyof ClientToServerEvents>(
   callback?: (...args: any[]) => void
 ): void {
   if (socket && socket.connected) {
+    console.log(`📤 [SOCKET CLIENT] Emitting event: ${String(event)}`, data);
     if (callback) {
       socket.emit(event as any, data, callback);
     } else {
       socket.emit(event as any, data);
     }
   } else {
-    console.warn('Socket not connected, cannot emit event:', event);
+    console.warn('⚠️ [SOCKET CLIENT] Socket not connected, cannot emit event:', event);
     if (callback) {
       callback({ success: false, error: 'Socket not connected' });
     }
@@ -116,14 +117,24 @@ export function onSocketEvent<K extends keyof ServerToClientEvents>(
   handler: ServerToClientEvents[K]
 ): () => void {
   if (socket) {
-    socket.on(event as any, handler as any);
+    console.log(`👂 [SOCKET CLIENT] Registering listener for event: ${String(event)}`);
+
+    // Wrap handler to log when event is received
+    const wrappedHandler = (...args: any[]) => {
+      console.log(`📥 [SOCKET CLIENT] Received event: ${String(event)}`, args[0]);
+      (handler as any)(...args);
+    };
+
+    socket.on(event as any, wrappedHandler as any);
 
     // Return cleanup function
     return () => {
-      socket?.off(event as any, handler as any);
+      console.log(`🗑️ [SOCKET CLIENT] Removing listener for event: ${String(event)}`);
+      socket?.off(event as any, wrappedHandler as any);
     };
   }
 
+  console.warn(`⚠️ [SOCKET CLIENT] No socket available to register listener for: ${String(event)}`);
   return () => {}; // No-op cleanup
 }
 

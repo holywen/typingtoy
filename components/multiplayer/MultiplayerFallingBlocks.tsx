@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
-import type { SerializedGameState, PlayerState as GamePlayerState } from '@/lib/game-engine/GameState';
+import type { SerializedGameState } from '@/lib/game-engine/GameState';
+import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 
 interface FallingBlock {
   id: number;
@@ -42,6 +43,7 @@ export default function MultiplayerFallingBlocks({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
+      console.log('📥 [FALLING BLOCKS] Received game:state');
       setGameState(state);
       setGameStarted(true);
 
@@ -58,26 +60,26 @@ export default function MultiplayerFallingBlocks({
       setPlayerStates(newPlayerStates);
     };
 
-    const handleGameEnded = (data: { winner: string | null; finalState: SerializedGameState }) => {
+    const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
-      setGameState(data.finalState);
-      console.log('🎮 Game ended, winner:', data.winner);
+      console.log('🎮 Falling Blocks game ended, winner:', data.winner, 'finalState:', data.finalState);
     };
 
-    const handleGameError = (data: { code: string; message: string }) => {
-      console.error('Game error:', data);
-      alert(`Game error: ${data.message}`);
-    };
+    // TODO: Add 'game:error' to ServerToClientEvents in types/socket.ts
+    // const handleGameError = (data: { code: string; message: string }) => {
+    //   console.error('Game error:', data);
+    //   alert(`Game error: ${data.message}`);
+    // };
 
     const cleanupState = onSocketEvent('game:state', handleGameState);
     const cleanupEnded = onSocketEvent('game:ended', handleGameEnded);
-    const cleanupError = onSocketEvent('game:error', handleGameError);
+    // const cleanupError = onSocketEvent('game:error', handleGameError);
 
     return () => {
       cleanupState();
       cleanupEnded();
-      cleanupError();
+      // cleanupError();
     };
   }, []);
 

@@ -1,6 +1,7 @@
 // Socket.IO event types
 
 import { GameRoom, PlayerState, GameState, GameInput, ChatMessage, MatchQueueEntry } from './multiplayer';
+import type { SerializedGameState } from '@/lib/game-engine/GameState';
 
 // Client to Server Events
 export interface ClientToServerEvents {
@@ -34,9 +35,11 @@ export interface ClientToServerEvents {
   'match:cancel': () => void;
 
   // Game events
-  'game:input': (data: GameInput) => void;
+  'game:input': (data: { roomId: string; input: any }) => void;
 
   'game:ready': (data: { roomId: string }) => void;
+
+  'game:start': (data: { roomId: string }, callback: (response: { success: boolean; error?: string }) => void) => void;
 
   // Chat events
   'chat:send': (data: {
@@ -83,23 +86,24 @@ export interface ServerToClientEvents {
   // Game events
   'game:countdown': (data: { roomId: string; countdown: number }) => void;
 
-  'game:started': (data: { roomId: string; gameState: GameState }) => void;
+  'game:started': (data: { roomId: string; gameState: SerializedGameState }) => void;
+
+  'game:state': (data: SerializedGameState) => void;
 
   'game:state:update': (data: { roomId: string; gameState: Partial<GameState> }) => void;
 
   'game:player:update': (data: { roomId: string; playerId: string; playerState: Partial<PlayerState> }) => void;
 
   'game:ended': (data: {
-    roomId: string;
-    winner: string;
-    results: Array<{
-      playerId: string;
-      displayName: string;
-      rank: number;
-      score: number;
-      metrics: any;
-    }>;
+    winner: string | null;
+    finalState: SerializedGameState;
   }) => void;
+
+  'game:error': (data: { code: string; message: string }) => void;
+
+  'game:input:rejected': (data: { reason: string; input: any }) => void;
+
+  'game:player:disconnected': (data: { playerId: string; displayName: string }) => void;
 
   // Chat events
   'chat:message': (data: ChatMessage) => void;
@@ -141,4 +145,6 @@ export interface SocketData {
   deviceId: string;
   displayName: string;
   currentRoomId?: string;
+  inMatchmaking?: boolean;
+  matchmakingGameType?: string;
 }

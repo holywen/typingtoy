@@ -7,7 +7,7 @@ import { BlinkMultiplayer } from '@/lib/game-engine/BlinkMultiplayer';
 import { SpeedRaceMultiplayer } from '@/lib/game-engine/SpeedRaceMultiplayer';
 import { FallingWordsMultiplayer } from '@/lib/game-engine/FallingWordsMultiplayer';
 import { BaseMultiplayerGame } from '@/lib/game-engine/BaseMultiplayerGame';
-import type { PlayerInput } from '@/lib/game-engine/GameState';
+import type { PlayerInput } from '@/lib/game-engine/PlayerState';
 import { AntiCheatValidator } from '../antiCheat';
 
 // Store active game instances (can be any game type)
@@ -32,12 +32,16 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
     console.log(`🎮 Starting ${gameType} game for room ${roomId}`);
 
     // Create game instance based on game type
+    const roomSettings = room.settings as { customRules?: Record<string, any> } | undefined;
+    const customRulesSettings = roomSettings?.customRules as { totalChars?: number; charTimeLimit?: number } | undefined;
     const gameConfig = {
       lessonId: room.settings?.lessonId,
-      difficulty: room.settings?.difficulty,
+      difficulty: room.settings?.difficulty as 'easy' | 'medium' | 'hard' | 'expert' | undefined,
       timeLimit: room.settings?.timeLimit || 120, // Default 2 minutes
-      totalChars: room.settings?.totalChars || 50, // For Blink
-      charTimeLimit: room.settings?.charTimeLimit || 2000, // For Blink (2 seconds per char)
+      customRules: {
+        totalChars: customRulesSettings?.totalChars || 50, // For Blink
+        charTimeLimit: customRulesSettings?.charTimeLimit || 2000, // For Blink (2 seconds per char)
+      }
     };
 
     const playerList = room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName }));
@@ -113,8 +117,7 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
     // Emit game started event
     io.to(roomId).emit('game:started', {
       roomId,
-      seed: room.settings?.seed || Date.now(),
-      config: gameConfig,
+      gameState: game.serialize(),
     });
 
     console.log(`✅ Game started in room ${roomId}`);
@@ -153,16 +156,17 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
 
       // Create game instance based on game type
       const gameType = room.gameType || 'falling-blocks';
+      const roomSettings = room.settings as { lessonId?: number; difficulty?: string; timeLimit?: number; totalChars?: number; charTimeLimit?: number; seed?: number } | undefined;
       const gameConfig = {
-        lessonId: room.settings?.lessonId,
-        difficulty: room.settings?.difficulty,
-        timeLimit: room.settings?.timeLimit || 120, // Default 2 minutes
-        totalChars: room.settings?.totalChars || 50, // For Blink
-        charTimeLimit: room.settings?.charTimeLimit || 2000, // For Blink
+        lessonId: roomSettings?.lessonId,
+        difficulty: roomSettings?.difficulty as 'easy' | 'medium' | 'hard' | 'expert' | undefined,
+        timeLimit: roomSettings?.timeLimit || 120, // Default 2 minutes
+        totalChars: roomSettings?.totalChars || 50, // For Blink
+        charTimeLimit: roomSettings?.charTimeLimit || 2000, // For Blink
       };
 
       const playerList = room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName }));
-      const seed = room.settings?.seed || Date.now();
+      const seed = roomSettings?.seed || Date.now();
 
       let game: BaseMultiplayerGame;
 
@@ -190,11 +194,12 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
       activeGames.set(roomId, game);
 
       // Update room status
-      await RoomManager.updateRoomStatus(roomId, 'playing');
+      room.status = 'playing';
+      await RoomManager.updateRoom(room);
 
       // Start game loop - broadcast state every 100ms
       const gameLoop = setInterval(() => {
-        const state = game.getSerializedState();
+        const state = game.serialize();
         io.to(roomId).emit('game:state', state);
 
         // Check if game is over
@@ -207,15 +212,19 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
           });
           activeGames.delete(roomId);
           // Update room status back to waiting
-          RoomManager.updateRoomStatus(roomId, 'waiting').catch(console.error);
+          RoomManager.getRoom(roomId).then(r => {
+            if (r) {
+              r.status = 'waiting';
+              RoomManager.updateRoom(r).catch(console.error);
+            }
+          }).catch(console.error);
         }
       }, 100);
 
       // Emit game started event
       io.to(roomId).emit('game:started', {
         roomId,
-        seed: room.settings?.seed || Date.now(),
-        config: gameConfig,
+        gameState: game.serialize(),
       });
 
       console.log(`✅ Game started in room ${roomId}`);
@@ -269,17 +278,20 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
       // Broadcast updated player state to all players in room
       if (result.success) {
         const playerState = game.getPlayerState(playerId);
-        io.to(roomId).emit('game:player:update', {
-          playerId,
-          playerState,
-        });
-        console.log(`✅ Block destroyed! Player ${playerId} score: ${playerState?.score}`);
+        if (playerState) {
+          io.to(roomId).emit('game:player:update', {
+            roomId,
+            playerId,
+            playerState,
+          });
+          console.log(`✅ Block destroyed! Player ${playerId} score: ${playerState.score}`);
+        }
       } else {
         socket.emit('game:input:rejected', {
-          reason: result.error,
+          reason: result.error || 'Input validation failed',
           input,
         });
-        console.log(`❌ Input rejected: ${result.error}`);
+        console.log(`❌ Input rejected: ${result.error || 'Input validation failed'}`);
       }
     } catch (error) {
       console.error('Error handling game input:', error);

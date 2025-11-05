@@ -2,14 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { emitSocketEvent, onSocketEvent, offSocketEvent } from '@/lib/services/socketClient';
-
-interface ChatMessage {
-  playerId: string;
-  displayName: string;
-  message: string;
-  timestamp: number;
-  type?: 'system' | 'user';
-}
+import { ChatMessage } from '@/types/multiplayer';
 
 interface ChatBoxProps {
   playerId: string;
@@ -35,8 +28,8 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
       setMessages((prev) => [...prev, data]);
     };
 
-    const handleChatError = (data: { error: string }) => {
-      setError(data.error);
+    const handleChatError = (data: { code: string; message: string }) => {
+      setError(data.message);
       setTimeout(() => setError(null), 3000);
     };
 
@@ -116,25 +109,18 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
             <div
               key={index}
               className={`${
-                msg.type === 'system'
-                  ? 'text-center'
-                  : msg.playerId === playerId
+                msg.playerId === playerId
                   ? 'flex justify-end'
                   : 'flex justify-start'
               }`}
             >
-              {msg.type === 'system' ? (
-                <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-300">
-                  {msg.message}
-                </div>
-              ) : (
-                <div
-                  className={`max-w-[80%] ${
-                    msg.playerId === playerId
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                  } rounded-lg px-3 py-2`}
-                >
+              <div
+                className={`max-w-[80%] ${
+                  msg.playerId === playerId
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                } rounded-lg px-3 py-2`}
+              >
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="text-xs font-semibold">
                       {msg.playerId === playerId ? 'You' : msg.displayName}
@@ -149,7 +135,6 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
                   </div>
                   <p className="text-sm break-words">{msg.message}</p>
                 </div>
-              )}
             </div>
           ))
         )}

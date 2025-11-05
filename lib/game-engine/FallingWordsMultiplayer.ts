@@ -4,6 +4,7 @@
 import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
 import { PlayerInput, InputResult } from './PlayerState';
 import { GameSettings, SerializedGameState, serializeGameState } from './GameState';
+import { GameType } from '@/types/multiplayer';
 
 /**
  * Falling word data structure
@@ -59,12 +60,24 @@ export interface FallingWordsPlayerData {
  * - Winner is last player standing OR highest score when time runs out
  */
 export class FallingWordsMultiplayer extends BaseMultiplayerGame {
-  protected gameType: string = 'falling-words';
   private readonly UPDATE_INTERVAL = 50; // Update words every 50ms
   private lastUpdateTime: number = 0;
 
+  constructor(params: {
+    roomId: string;
+    players: PlayerInfo[];
+    seed: number;
+    settings?: GameSettings;
+  }) {
+    super({
+      ...params,
+      gameType: 'falling-words' as GameType,
+    });
+  }
+
   protected initGame(): void {
-    const characters = this.settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const customSettings = this.settings.customRules as { characters?: string[] } | undefined;
+    const characters = customSettings?.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
     const maxLostWords = 5; // Lose after 5 words fall off screen
 
     // Generate word pool using seeded RNG for consistency
@@ -162,7 +175,7 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
     console.log(`📝 Falling Words game started for room ${this.roomId}`);
   }
 
-  protected updateGameState(deltaTime: number): void {
+  public updateGameState(deltaTime: number): void {
     const state = this.gameState.gameSpecificState as FallingWordsGameState;
     const now = Date.now();
 
@@ -339,23 +352,19 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
             console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"! Words: ${playerData.wordsCompleted}`);
 
             // Check if all players have completed or lost this word, then remove it
+            const completedWordId = targetWord.id;
             const allPlayersProcessed = Array.from(this.gameState.players.values()).every(p => {
               const pd = p.gameSpecificData as FallingWordsPlayerData;
-              return pd.completedWordIds.has(targetWord.id) || pd.lostWordIds.has(targetWord.id) || p.isFinished;
+              return pd.completedWordIds.has(completedWordId) || pd.lostWordIds.has(completedWordId) || p.isFinished;
             });
 
             if (allPlayersProcessed) {
-              state.words = state.words.filter(w => w.id !== targetWord.id);
+              state.words = state.words.filter(w => w.id !== completedWordId);
               console.log(`🗑️ Word "${targetWord.word}" removed (all players processed)`);
             }
 
             return {
               success: true,
-              points: targetWord.word.length * 10,
-              feedback: {
-                message: `Completed "${targetWord.word}"!`,
-                type: 'correct',
-              }
             };
           }
 
@@ -363,11 +372,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
           return {
             success: true,
-            points: 0,
-            feedback: {
-              message: 'Correct!',
-              type: 'correct',
-            }
           };
         } else {
           // Wrong character - cancel current word
@@ -380,10 +384,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
           return {
             success: false,
             error: 'Wrong character',
-            feedback: {
-              message: 'Wrong! Word cancelled',
-              type: 'error',
-            }
           };
         }
       }
@@ -414,23 +414,19 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
         console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"!`);
 
         // Check if all players have completed or lost this word, then remove it
+        const completedWordId = targetWord.id;
         const allPlayersProcessed = Array.from(this.gameState.players.values()).every(p => {
           const pd = p.gameSpecificData as FallingWordsPlayerData;
-          return pd.completedWordIds.has(targetWord.id) || pd.lostWordIds.has(targetWord.id) || p.isFinished;
+          return pd.completedWordIds.has(completedWordId) || pd.lostWordIds.has(completedWordId) || p.isFinished;
         });
 
         if (allPlayersProcessed) {
-          state.words = state.words.filter(w => w.id !== targetWord.id);
+          state.words = state.words.filter(w => w.id !== completedWordId);
           console.log(`🗑️ Word "${targetWord.word}" removed (all players processed)`);
         }
 
         return {
           success: true,
-          points: targetWord.word.length * 10,
-          feedback: {
-            message: `Completed "${targetWord.word}"!`,
-            type: 'correct',
-          }
         };
       }
 
@@ -438,11 +434,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
       return {
         success: true,
-        points: 0,
-        feedback: {
-          message: `Started "${targetWord.word}"`,
-          type: 'correct',
-        }
       };
     }
 
@@ -452,14 +443,10 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
     return {
       success: false,
       error: 'No matching word',
-      feedback: {
-        message: 'No word starts with that letter',
-        type: 'error',
-      }
     };
   }
 
-  protected checkWinCondition(): string | null {
+  public checkWinCondition(): string | null {
     // Winner is the last player standing OR player with highest score
     const activePlayers = Array.from(this.gameState.players.entries())
       .filter(([_, p]) => !p.isFinished);
@@ -489,12 +476,15 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
   serialize(): SerializedGameState {
     const state = this.gameState.gameSpecificState as FallingWordsGameState;
 
+    // Use the serializeGameState helper for base state
+    const baseState = serializeGameState(this.gameState);
+
     // Convert player data with Sets to serializable format
     const serializedPlayers: Record<string, any> = {};
     for (const [playerId, playerState] of this.gameState.players) {
       const playerData = playerState.gameSpecificData as FallingWordsPlayerData;
       serializedPlayers[playerId] = {
-        ...playerState,
+        ...baseState.players[playerId],
         gameSpecificData: {
           ...playerData,
           completedWordIds: Array.from(playerData.completedWordIds),
@@ -505,12 +495,8 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
     // Include Falling Words-specific state
     return {
-      roomId: this.gameState.roomId,
-      gameType: this.gameState.gameType,
-      status: this.gameState.status,
-      startTime: this.gameState.startTime,
+      ...baseState,
       players: serializedPlayers,
-      winnerId: this.gameState.winnerId,
       gameSpecificState: {
         words: state.words,
         nextWordId: state.nextWordId,

@@ -1,6 +1,7 @@
 // Core game state types for multiplayer games
 
 import { GameType } from '@/types/multiplayer';
+import { PlayerState } from './PlayerState';
 
 /**
  * Game status enum

@@ -1,14 +1,14 @@
 // Redis match queue operations
 
 import { redis } from './client';
-import { MatchQueueEntry } from '@/types/multiplayer';
+import { MatchQueueEntry, GameType } from '@/types/multiplayer';
 
 const QUEUE_PREFIX = 'matchqueue:';
 const QUEUE_TTL = 300; // 5 minutes
 
 export class MatchQueue {
   // Build queue key
-  private static getQueueKey(gameType: string, skillTier: string): string {
+  private static getQueueKey(gameType: GameType, skillTier: string): string {
     return `${QUEUE_PREFIX}${gameType}:${skillTier}`;
   }
 
@@ -26,7 +26,7 @@ export class MatchQueue {
   }
 
   // Remove player from queue
-  static async removeFromQueue(playerId: string, gameType: string, skillTier: string): Promise<void> {
+  static async removeFromQueue(playerId: string, gameType: GameType, skillTier: string): Promise<void> {
     const key = this.getQueueKey(gameType, skillTier);
     const members = await redis.zrange(key, 0, -1);
 
@@ -56,7 +56,7 @@ export class MatchQueue {
   }
 
   // Get waiting players from queue (ordered by join time)
-  static async getWaitingPlayers(gameType: string, skillTier: string, limit: number = 10): Promise<MatchQueueEntry[]> {
+  static async getWaitingPlayers(gameType: GameType, skillTier: string, limit: number = 10): Promise<MatchQueueEntry[]> {
     const key = this.getQueueKey(gameType, skillTier);
     const members = await redis.zrange(key, 0, limit - 1, 'WITHSCORES');
 
@@ -78,7 +78,7 @@ export class MatchQueue {
   }
 
   // Find matches in queue (get oldest N players)
-  static async findMatches(gameType: string, skillTier: string, count: number): Promise<MatchQueueEntry[]> {
+  static async findMatches(gameType: GameType, skillTier: string, count: number): Promise<MatchQueueEntry[]> {
     const players = await this.getWaitingPlayers(gameType, skillTier, count);
 
     // Remove matched players from queue
@@ -94,13 +94,13 @@ export class MatchQueue {
   }
 
   // Get queue size
-  static async getQueueSize(gameType: string, skillTier: string): Promise<number> {
+  static async getQueueSize(gameType: GameType, skillTier: string): Promise<number> {
     const key = this.getQueueKey(gameType, skillTier);
     return await redis.zcard(key);
   }
 
   // Check if player is in queue
-  static async isInQueue(playerId: string, gameType: string, skillTier: string): Promise<boolean> {
+  static async isInQueue(playerId: string, gameType: GameType, skillTier: string): Promise<boolean> {
     const key = this.getQueueKey(gameType, skillTier);
     const members = await redis.zrange(key, 0, -1);
 
@@ -115,7 +115,7 @@ export class MatchQueue {
   }
 
   // Clean expired entries (called periodically)
-  static async cleanExpired(gameType: string, skillTier: string): Promise<number> {
+  static async cleanExpired(gameType: GameType, skillTier: string): Promise<number> {
     const key = this.getQueueKey(gameType, skillTier);
     const now = Date.now();
     const expiredTime = now - (QUEUE_TTL * 1000);

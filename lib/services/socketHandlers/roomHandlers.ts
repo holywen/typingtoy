@@ -97,13 +97,13 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
       socket.data.currentRoomId = data.roomId;
 
       // Notify room about new player
-      io.to(data.roomId).emit('room:updated', { room: result.room });
+      io.to(data.roomId).emit('room:updated', { room: result.room! });
       io.to(data.roomId).emit('player:joined', {
         roomId: data.roomId,
         player: result.room!.players.find(p => p.playerId === playerId),
       });
 
-      callback({ success: true, room: result.room });
+      callback({ success: true, room: result.room! });
     } catch (error) {
       console.error('Error joining room:', error);
       callback({ success: false, error: 'Failed to join room' });
@@ -180,13 +180,13 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
 
       // Notify room - countdown then start
       let countdown = 3;
-      io.to(roomId).emit('game:starting', { countdown });
+      io.to(roomId).emit('game:countdown', { roomId, countdown });
 
       // Countdown
       const countdownInterval = setInterval(() => {
         countdown--;
         if (countdown > 0) {
-          io.to(roomId).emit('game:starting', { countdown });
+          io.to(roomId).emit('game:countdown', { roomId, countdown });
         } else {
           clearInterval(countdownInterval);
         }
@@ -199,9 +199,11 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
         try {
           // Import game handlers to start the game
           const { startGameForRoom } = await import('./gameHandlers');
+          console.log(`📞 About to call startGameForRoom for room ${roomId}`);
           await startGameForRoom(io, roomId);
+          console.log(`✅ startGameForRoom completed for room ${roomId}`);
         } catch (error) {
-          console.error('Error starting game after countdown:', error);
+          console.error('❌ Error starting game after countdown:', error);
           io.to(roomId).emit('game:error', {
             code: 'START_ERROR',
             message: 'Failed to start game'

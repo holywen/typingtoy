@@ -1,6 +1,6 @@
 // Utility script to clean up stale rooms from the database
-import { connectDB } from '../lib/db/mongodb';
-import { GameRoomModel } from '../lib/db/models/GameRoom';
+import connectDB from '../lib/db/mongodb';
+import GameRoomModel from '../lib/db/models/GameRoom';
 
 async function cleanupStaleRooms() {
   try {

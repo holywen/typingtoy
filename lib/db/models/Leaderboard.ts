@@ -215,7 +215,7 @@ LeaderboardSchema.statics.submitScore = async function(entry: Partial<Leaderboar
     period,
   }).sort({ score: -1 });
 
-  if (!existingBest || score > existingBest.score) {
+  if (!existingBest || typeof existingBest.score === 'undefined' || (score && score > existingBest.score)) {
     // Create new entry
     return this.create(entry);
   }
@@ -240,7 +240,7 @@ LeaderboardSchema.statics.updateRanks = async function(gameType: string, period:
     .sort({ score: -1, achievedAt: 1 })
     .lean();
 
-  const updates = entries.map((entry, index) => ({
+  const updates = entries.map((entry: any, index: number) => ({
     updateOne: {
       filter: { _id: entry._id },
       update: { $set: { rank: index + 1 } },

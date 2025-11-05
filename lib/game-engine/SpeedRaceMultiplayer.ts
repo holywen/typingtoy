@@ -4,6 +4,7 @@
 import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
 import { PlayerInput, InputResult } from './PlayerState';
 import { GameSettings, SerializedGameState, serializeGameState } from './GameState';
+import { GameType } from '@/types/multiplayer';
 
 const GRID_ROWS = 10;
 const GRID_COLS = 22;
@@ -60,10 +61,21 @@ export interface SpeedRacePlayerData {
  * - Race is complete when first player finishes OR all players game over
  */
 export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
-  protected gameType: string = 'speed-race';
+  constructor(params: {
+    roomId: string;
+    players: PlayerInfo[];
+    seed: number;
+    settings?: GameSettings;
+  }) {
+    super({
+      ...params,
+      gameType: 'speed-race' as GameType,
+    });
+  }
 
   protected initGame(): void {
-    const characters = this.settings.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const customSettings = this.settings.customRules as { characters?: string[] } | undefined;
+    const characters = customSettings?.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
     const maxLives = 5;
 
     // Generate shared grid and path using seeded RNG
@@ -73,7 +85,7 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
     const raceState: SpeedRaceGameState = {
       grid,
       pathSequence,
-      gridSeed: this.rngSeed,
+      gridSeed: this.gameState.seed,
       characters,
       totalPathLength: pathSequence.length,
     };
@@ -155,7 +167,7 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
     console.log(`🏁 Speed Race started for room ${this.roomId}`);
   }
 
-  protected updateGameState(deltaTime: number): void {
+  public updateGameState(deltaTime: number): void {
     // Check if any player has completed the race
     const state = this.gameState.gameSpecificState as SpeedRaceGameState;
 
@@ -216,11 +228,6 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
 
       return {
         success: true,
-        points: 100, // Completion bonus
-        feedback: {
-          message: 'Race completed!',
-          type: 'correct',
-        }
       };
     }
 
@@ -250,11 +257,6 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
 
       return {
         success: true,
-        points,
-        feedback: {
-          message: 'Correct!',
-          type: 'correct',
-        }
       };
     } else {
       // Wrong keystroke - lose a life!
@@ -271,20 +273,11 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
       return {
         success: false,
         error: `Wrong key! Expected: ${nextCell.char}`,
-        feedback: {
-          message: `Wrong! Expected: ${nextCell.char}. Lives: ${playerData.remainingLives}`,
-          type: 'error',
-          details: {
-            expected: nextCell.char,
-            actual: key,
-            livesRemaining: playerData.remainingLives,
-          }
-        }
       };
     }
   }
 
-  protected checkWinCondition(): string | null {
+  public checkWinCondition(): string | null {
     // Winner is the first player to complete the race
     for (const [playerId, playerState] of this.gameState.players) {
       const playerData = playerState.gameSpecificData as SpeedRacePlayerData;

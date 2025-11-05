@@ -106,34 +106,47 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     };
 
-    const handlePlayerJoined = (data: { room: GameRoom }) => {
-      if (data.room.roomId === roomId) {
-        setRoom(data.room);
-      }
+    const handlePlayerJoined = (data: { roomId: string; player: any }) => {
+      // Room data will be updated via room:updated event
+      console.log('Player joined:', data);
     };
 
-    const handlePlayerLeft = (data: { room: GameRoom }) => {
-      if (data.room.roomId === roomId) {
-        setRoom(data.room);
-        const stillInRoom = data.room.players.some((p) => p.playerId === playerId);
-        if (!stillInRoom) {
+    const handlePlayerLeft = (data: { roomId: string; playerId: string }) => {
+      if (data.roomId === roomId) {
+        // Check if we were the one who left
+        if (data.playerId === playerId) {
           router.push('/multiplayer');
         }
+        // Room data will be updated via room:updated event
       }
     };
 
-    const handlePlayerKicked = () => {
-      router.push('/multiplayer');
+    const handlePlayerKicked = (data: { roomId: string; playerId: string }) => {
+      if (data.playerId === playerId) {
+        router.push('/multiplayer');
+      }
     };
 
-    const handleGameStarting = (data: { countdown: number }) => {
-      setCountdown(data.countdown);
+    const handleGameStarting = (data: { roomId: string; countdown: number }) => {
+      console.log('⏱️ [CLIENT] game:countdown event received:', data);
+      if (data.roomId === roomId) {
+        console.log('✅ [CLIENT] Setting countdown to:', data.countdown);
+        setCountdown(data.countdown);
+      } else {
+        console.log('⚠️ [CLIENT] Countdown for different room, ignoring');
+      }
     };
 
-    const handleGameStarted = (data: { roomId: string; seed: number; config: any }) => {
-      setCountdown(null);
-      setGameActive(true);
-      console.log('Game started:', data);
+    const handleGameStarted = (data: { roomId: string; gameState: any }) => {
+      console.log('🎮 [CLIENT] game:started event received:', data);
+      if (data.roomId === roomId) {
+        console.log('✅ [CLIENT] Activating game! Setting gameActive=true');
+        setCountdown(null);
+        setGameActive(true);
+        console.log('Game started:', data);
+      } else {
+        console.log('⚠️ [CLIENT] game:started for different room, ignoring');
+      }
     };
 
     const handleRoomDeleted = (data: { roomId: string }) => {
@@ -143,10 +156,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     };
 
     const cleanupUpdated = onSocketEvent('room:updated', handleRoomUpdated);
-    const cleanupJoined = onSocketEvent('room:player-joined', handlePlayerJoined);
-    const cleanupLeft = onSocketEvent('room:player-left', handlePlayerLeft);
-    const cleanupKicked = onSocketEvent('room:kicked', handlePlayerKicked);
-    const cleanupStarting = onSocketEvent('game:starting', handleGameStarting);
+    const cleanupJoined = onSocketEvent('player:joined', handlePlayerJoined);
+    const cleanupLeft = onSocketEvent('player:left', handlePlayerLeft);
+    const cleanupKicked = onSocketEvent('player:kicked', handlePlayerKicked);
+    const cleanupStarting = onSocketEvent('game:countdown', handleGameStarting);
     const cleanupStarted = onSocketEvent('game:started', handleGameStarted);
     const cleanupDeleted = onSocketEvent('room:deleted', handleRoomDeleted);
 
@@ -179,10 +192,15 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   };
 
   const handleStartGame = () => {
+    console.log('🎮 [CLIENT] Start Game button clicked for room:', roomId);
     emitSocketEvent('room:start', { roomId }, (response) => {
+      console.log('🎮 [CLIENT] room:start callback received:', response);
       if (response && !response.success) {
+        console.error('❌ [CLIENT] room:start failed:', response.error);
         setError(response.error || 'Failed to start game');
         setTimeout(() => setError(null), 3000);
+      } else {
+        console.log('✅ [CLIENT] room:start succeeded');
       }
     });
   };
@@ -249,6 +267,9 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     };
 
     const handleReturnToLobby = () => {
+      // Leave the room before returning to lobby
+      console.log('🚪 Leaving room before returning to lobby');
+      emitSocketEvent('room:leave', { roomId });
       router.push('/multiplayer');
     };
 
@@ -264,7 +285,6 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
           />
         );
 
-      case 'speed-race':
       case 'typing-walk':
         return (
           <MultiplayerSpeedRace

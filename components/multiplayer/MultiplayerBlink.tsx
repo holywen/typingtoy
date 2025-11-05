@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
-import type { SerializedGameState, PlayerState as GamePlayerState } from '@/lib/game-engine/GameState';
+import type { SerializedGameState } from '@/lib/game-engine/GameState';
+import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { BlinkGameState, BlinkPlayerData } from '@/lib/game-engine/BlinkMultiplayer';
 
 interface MultiplayerBlinkProps {
@@ -39,6 +40,7 @@ export default function MultiplayerBlink({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
+      console.log('📥 [BLINK] Received game:state');
       console.log('🔍 [Blink Client] Received game state:', {
         hasGameSpecificState: !!state.gameSpecificState,
         gameSpecificState: state.gameSpecificState,
@@ -94,11 +96,10 @@ export default function MultiplayerBlink({
       setPlayerStates(newPlayerStates);
     };
 
-    const handleGameEnded = (data: { winner: string | null; finalState: SerializedGameState }) => {
+    const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
-      setGameState(data.finalState);
-      console.log('🎮 Blink game ended, winner:', data.winner);
+      console.log('🎮 Blink game ended, winner:', data.winner, 'finalState:', data.finalState);
     };
 
     const handleGameError = (data: { code: string; message: string }) => {
@@ -113,14 +114,15 @@ export default function MultiplayerBlink({
 
     const cleanupState = onSocketEvent('game:state', handleGameState);
     const cleanupEnded = onSocketEvent('game:ended', handleGameEnded);
-    const cleanupError = onSocketEvent('game:error', handleGameError);
-    const cleanupRejected = onSocketEvent('game:input:rejected', handleInputRejected);
+    // TODO: Add 'game:error' and 'game:input:rejected' to ServerToClientEvents
+    // const cleanupError = onSocketEvent('game:error', handleGameError);
+    // const cleanupRejected = onSocketEvent('game:input:rejected', handleInputRejected);
 
     return () => {
       cleanupState();
       cleanupEnded();
-      cleanupError();
-      cleanupRejected();
+      // cleanupError();
+      // cleanupRejected();
     };
   }, []);
 

@@ -73,13 +73,15 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
   // Helper function to broadcast online players list
   const broadcastOnlinePlayers = async () => {
     try {
+      if (!io) return;
+
       const { RoomManager } = await import('./roomManager');
       const onlinePlayerIds = await redis.smembers('online:players');
 
       const players = await Promise.all(
         onlinePlayerIds.map(async (pid) => {
           const socketId = await redis.get(`player:${pid}:socketId`);
-          const socket = io.sockets.sockets.get(socketId || '');
+          const socket = io!.sockets.sockets.get(socketId || '');
           const displayName = socket?.data?.displayName || 'Unknown';
 
           // Check player status
@@ -99,7 +101,7 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       );
 
       // Broadcast to all connected clients
-      io.emit('lobby:players', { players });
+      io!.emit('lobby:players', { players });
     } catch (error) {
       console.error('Error broadcasting online players:', error);
     }
@@ -122,13 +124,13 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
         // Notify others in the room if it still exists
         const room = await RoomManager.getRoom(existingRoom.roomId);
         if (room) {
-          io.to(existingRoom.roomId).emit('room:updated', { room });
-          io.to(existingRoom.roomId).emit('player:left', {
+          io!.to(existingRoom.roomId).emit('room:updated', { room });
+          io!.to(existingRoom.roomId).emit('player:left', {
             roomId: existingRoom.roomId,
             playerId
           });
         } else {
-          io.emit('room:deleted', { roomId: existingRoom.roomId });
+          io!.emit('room:deleted', { roomId: existingRoom.roomId });
         }
       }
     } catch (error) {
@@ -178,11 +180,11 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
 
           if (room) {
             // Notify remaining players
-            io.to(roomId).emit('room:updated', { room });
-            io.to(roomId).emit('player:left', { roomId, playerId });
+            io!.to(roomId).emit('room:updated', { room });
+            io!.to(roomId).emit('player:left', { roomId, playerId });
           } else {
             // Room was deleted
-            io.emit('room:deleted', { roomId });
+            io!.emit('room:deleted', { roomId });
           }
 
           socket.data.currentRoomId = undefined;

@@ -7,7 +7,7 @@ import { ProfanityFilter } from '@/lib/utils/profanityFilter';
 
 export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void {
   // Send chat message
-  socket.on('chat:send', async (data, callback) => {
+  socket.on('chat:send', async (data) => {
     console.log('💬 chat:send received:', data);
     try {
       const { playerId, displayName } = socket.data;
@@ -86,21 +86,12 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
         io.to(roomId).emit('chat:message', chatMessage);
       }
       console.log('✅ Chat message broadcast successfully');
-
-      // Call callback to acknowledge success
-      if (callback) {
-        callback({ success: true });
-      }
     } catch (error) {
       console.error('❌ Error handling chat message:', error);
       socket.emit('chat:error', {
         code: 'INTERNAL_ERROR',
         message: 'Failed to send message',
       });
-      // Call callback with error
-      if (callback) {
-        callback({ success: false, error: 'Failed to send message' });
-      }
     }
   });
 }

@@ -1,6 +1,6 @@
 // Multiplayer game types
 
-export type GameType = 'falling-blocks' | 'blink' | 'typing-walk' | 'falling-words';
+export type GameType = 'falling-blocks' | 'blink' | 'typing-walk' | 'speed-race' | 'falling-words';
 export type RoomStatus = 'waiting' | 'playing' | 'finished';
 export type PlayerType = 'user' | 'guest';
 export type LeaderboardPeriod = 'all-time' | 'daily' | 'weekly' | 'monthly';
