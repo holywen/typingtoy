@@ -43,8 +43,7 @@ services:
     image: mongo:7.0-jammy
     container_name: typingtoy-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    # Ports removed - only accessible within Docker network
     environment:
       - MONGO_INITDB_DATABASE=typingtoy
       # Uncomment and set for production security
@@ -61,8 +60,7 @@ services:
     image: redis:7-alpine
     container_name: typingtoy-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # Ports removed - only accessible within Docker network
     volumes:
       - redis-data:/data
     networks:
