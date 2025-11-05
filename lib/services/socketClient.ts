@@ -23,9 +23,14 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
     const authChanged = currentAuth.userId !== options.userId;
 
     if (authChanged) {
-      console.log('🔄 Auth changed, disconnecting old socket and creating new one');
+      console.log('🔄 Auth changed, disconnecting old socket and creating new one', {
+        oldUserId: currentAuth.userId,
+        newUserId: options.userId
+      });
       socket.disconnect();
+      socket.removeAllListeners();
       socket = null;
+      // Fall through to create new socket
     } else if (socket.connected) {
       console.log('✅ Socket already connected with same auth');
       return socket;
