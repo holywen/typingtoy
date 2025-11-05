@@ -124,6 +124,15 @@ export default function MultiplayerFallingBlocks({
   const currentPlayerState = playerStates.get(playerId);
   const sortedPlayers = Array.from(playerStates.values()).sort((a, b) => b.score - a.score);
 
+  // For split-screen: arrange players so current player is always on the left
+  const arrangedPlayers = gameEnded
+    ? sortedPlayers // Show rankings when game ends
+    : (() => {
+        const current = sortedPlayers.find(p => p.playerId === playerId);
+        const others = sortedPlayers.filter(p => p.playerId !== playerId);
+        return current ? [current, ...others] : sortedPlayers;
+      })();
+
   if (!gameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-purple-900">
@@ -227,7 +236,7 @@ export default function MultiplayerFallingBlocks({
   }
 
   // Determine grid layout based on player count
-  const playerCount = sortedPlayers.length;
+  const playerCount = arrangedPlayers.length;
   const gridLayout = playerCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
                      playerCount === 3 ? 'grid-cols-1 md:grid-cols-3' :
                      'grid-cols-2 md:grid-cols-2';
@@ -236,7 +245,8 @@ export default function MultiplayerFallingBlocks({
     <div className="min-h-screen bg-gradient-to-b from-blue-900 to-purple-900 p-4">
       {/* Split-screen Grid for 2-4 players */}
       <div className={`grid ${gridLayout} gap-4 min-h-[calc(100vh-2rem)]`}>
-        {sortedPlayers.map((player) => {
+        {arrangedPlayers.map((player) => {
+          const actualRank = sortedPlayers.findIndex(p => p.playerId === player.playerId) + 1;
           const isCurrentPlayer = player.playerId === playerId;
           const playerBlocks = localBlocks.filter((block) => block.playerId === player.playerId);
 
@@ -257,7 +267,7 @@ export default function MultiplayerFallingBlocks({
                     </div>
                   </div>
                   <div className="text-sm text-white/80">
-                    Rank #{sortedPlayers.findIndex(p => p.playerId === player.playerId) + 1}
+                    Rank #{actualRank}
                   </div>
                 </div>
 

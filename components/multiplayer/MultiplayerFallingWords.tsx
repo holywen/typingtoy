@@ -131,6 +131,15 @@ export default function MultiplayerFallingWords({
   const sortedPlayers = Array.from(playerStates.entries())
     .sort((a, b) => b[1].score - a[1].score);
 
+  // For split-screen: arrange players so current player is always on the left
+  const arrangedPlayers = gameEnded
+    ? sortedPlayers // Show rankings when game ends
+    : (() => {
+        const current = sortedPlayers.find(([pid]) => pid === playerId);
+        const others = sortedPlayers.filter(([pid]) => pid !== playerId);
+        return current ? [current, ...others] : sortedPlayers;
+      })();
+
   // Determine number of players for layout
   const playerCount = playerStates.size;
 
@@ -211,9 +220,11 @@ export default function MultiplayerFallingWords({
 
       {/* Split-screen Grid for 2-4 players */}
       <div className={`grid ${gridLayout} gap-4 min-h-[calc(100vh-2rem)]`}>
-        {sortedPlayers.map(([pid, pState], index) => {
+        {arrangedPlayers.map(([pid, pState], displayIndex) => {
           const isCurrentPlayer = pid === playerId;
           const pData = pState.gameSpecificData as FallingWordsPlayerData;
+          // Find actual rank in sorted list
+          const actualRank = sortedPlayers.findIndex(([p]) => p === pid) + 1;
 
           // Filter words for this specific player
           const playerWords = wordsState.words.filter((word) => {
@@ -244,7 +255,7 @@ export default function MultiplayerFallingWords({
                     </div>
                   </div>
                   <div className="text-sm text-white/80">
-                    Rank #{index + 1}
+                    Rank #{actualRank}
                   </div>
                 </div>
 

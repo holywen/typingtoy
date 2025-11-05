@@ -138,6 +138,15 @@ export default function MultiplayerSpeedRace({
       return bData.pathIndex - aData.pathIndex; // Higher index = further along
     });
 
+  // For split-screen: arrange players so current player is always on the left
+  const arrangedPlayers = gameEnded
+    ? sortedPlayers // Show rankings when game ends
+    : (() => {
+        const current = sortedPlayers.find(([pid]) => pid === playerId);
+        const others = sortedPlayers.filter(([pid]) => pid !== playerId);
+        return current ? [current, ...others] : sortedPlayers;
+      })();
+
   // Determine number of players for layout
   const playerCount = playerStates.size;
 
@@ -222,10 +231,11 @@ export default function MultiplayerSpeedRace({
           playerCount === 3 ? 'grid-cols-3' :
           'grid-cols-2'
         }`}>
-          {sortedPlayers.map(([pid, pState], index) => {
+          {arrangedPlayers.map(([pid, pState], displayIndex) => {
             const pData = pState.gameSpecificData as SpeedRacePlayerData;
             const isCurrentPlayer = pid === playerId;
-            const rank = index + 1;
+            // Find actual rank in sorted list
+            const rank = sortedPlayers.findIndex(([p]) => p === pid) + 1;
 
             return (
               <div
