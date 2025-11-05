@@ -38,11 +38,14 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
       deviceId: options.deviceId,
       displayName: options.displayName,
     },
-    transports: ['websocket', 'polling'],
+    // Start with polling for better Safari compatibility, then upgrade to websocket
+    transports: ['polling', 'websocket'],
     reconnection: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
     timeout: 20000,
+    // Allow upgrade from polling to websocket
+    upgrade: true,
   });
 
   // Connection events

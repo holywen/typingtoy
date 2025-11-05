@@ -13,7 +13,10 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
 
       // Restriction 1: In production, only authenticated users can create rooms
       const isProduction = process.env.NODE_ENV === 'production';
+      console.log(`🔒 Room creation auth check: isProduction=${isProduction}, userId=${userId ? 'present' : 'missing'}, NODE_ENV=${process.env.NODE_ENV}`);
+
       if (isProduction && !userId) {
+        console.log(`❌ Room creation denied: user not authenticated in production`);
         callback({
           success: false,
           error: 'You must be logged in to create a room. Please sign in to continue.'
