@@ -107,7 +107,7 @@ export default function MultiplayerPage() {
 
     // Note: We don't disconnect the socket on unmount because
     // the user might be navigating to a room page that needs the socket
-  }, [session]);
+  }, [session?.user?.id]); // Only re-run when userId changes, not entire session object
 
   if (isConnecting) {
     return (
