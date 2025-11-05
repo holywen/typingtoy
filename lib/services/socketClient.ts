@@ -36,6 +36,12 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
     ? window.location.origin
     : (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000');
 
+  console.log('🔌 [SOCKET CLIENT] Connecting with auth:', {
+    userId: options.userId,
+    deviceId: options.deviceId,
+    displayName: options.displayName,
+  });
+
   socket = io(socketUrl, {
     auth: {
       userId: options.userId,
