@@ -43,7 +43,9 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    transports: ['websocket', 'polling'],
+    // Match client transport order for better browser compatibility
+    transports: ['polling', 'websocket'],
+    allowUpgrades: true,
     pingTimeout: 60000,
     pingInterval: 25000,
   });
