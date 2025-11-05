@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { GameRoom } from '@/types/multiplayer';
 import { initSocketClient, getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
 import { getDeviceIdentity } from '@/lib/services/deviceId';
@@ -14,6 +15,7 @@ import MultiplayerFallingWords from '@/components/multiplayer/MultiplayerFalling
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
+  const { data: session } = useSession();
   const [room, setRoom] = useState<GameRoom | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,15 +30,25 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   useEffect(() => {
     async function init() {
       const identity = await getDeviceIdentity();
-      setPlayerId(identity.deviceId);
-      setDisplayName(identity.displayName);
+      // Use the same playerId logic as the server: userId || deviceId
+      const actualPlayerId = session?.user?.id || identity.deviceId;
+      setPlayerId(actualPlayerId);
+      setDisplayName(session?.user?.name || identity.displayName);
+
+      console.log('🔍 [ROOM PAGE] Player identity:', {
+        userId: session?.user?.id,
+        deviceId: identity.deviceId,
+        actualPlayerId,
+        displayName: session?.user?.name || identity.displayName,
+      });
 
       // Initialize socket if not already connected
       let socket = getSocket();
       if (!socket || !socket.connected) {
         socket = initSocketClient({
+          userId: session?.user?.id,
           deviceId: identity.deviceId,
-          displayName: identity.displayName,
+          displayName: session?.user?.name || identity.displayName,
         });
 
         // Wait for connection
@@ -54,7 +66,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     }
     init();
-  }, []);
+  }, [session?.user?.id]); // Re-run when session userId changes
 
   // Join room via socket when connected
   useEffect(() => {
@@ -80,6 +92,14 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         console.log('✅ Joined room via socket:', roomId);
         setRoom(response.room);
         const player = response.room.players.find((p: any) => p.playerId === playerId);
+
+        console.log('🔍 [ROOM PAGE] isHost check:', {
+          playerId,
+          players: response.room.players.map((p: any) => ({ playerId: p.playerId, isHost: p.isHost })),
+          foundPlayer: player,
+          isHost: player?.isHost || false,
+        });
+
         setIsHost(player?.isHost || false);
         setLoading(false);
         setError(null);
