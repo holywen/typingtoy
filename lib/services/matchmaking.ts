@@ -186,11 +186,13 @@ export class MatchmakingService {
       // Select first player as host
       const host = players[0];
 
-      // Create room
+      // Create room with MAX_PLAYERS_PER_MATCH capacity (not players.length)
+      // because createRoom already adds the host, so if maxPlayers=2 and we have 2 players,
+      // the room would be full after host joins and the second player can't join
       const room = await RoomManager.createRoom({
         gameType,
         roomName: `Quick Match - ${gameType}`,
-        maxPlayers: players.length,
+        maxPlayers: MAX_PLAYERS_PER_MATCH,
         hostId: host.playerId,
         hostName: host.displayName,
         settings: {
@@ -218,7 +220,19 @@ export class MatchmakingService {
         await MatchQueue.removeFromQueue(player.playerId, gameType, player.skillTier);
       }
 
-      console.log(`✅ Created matched room ${room.roomId} for ${players.length} players`);
+      // Notify all players about the match
+      const { getSocketServer } = await import('./socketServer');
+      const { notifyMatchFound } = await import('./socketHandlers/matchHandlers');
+      const io = getSocketServer();
+
+      if (io) {
+        for (const player of players) {
+          await notifyMatchFound(io, player.playerId, room.roomId);
+        }
+        console.log(`✅ Created matched room ${room.roomId} for ${players.length} players and notified all`);
+      } else {
+        console.log(`✅ Created matched room ${room.roomId} for ${players.length} players (no socket server to notify)`);
+      }
     } catch (error) {
       console.error('Error creating matched room:', error);
     }
