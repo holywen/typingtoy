@@ -16,7 +16,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "❌ Error: Docker Compose is not installed"
     echo "Please install Docker Compose from https://docs.docker.com/compose/install/"
     exit 1
@@ -44,39 +44,39 @@ MODE=${1:-"dev"}
 case $MODE in
     "dev"|"development")
         echo "📦 Starting in DEVELOPMENT mode..."
-        docker-compose up -d --build
+        docker compose up -d --build
         ;;
     "prod"|"production")
         echo "🏭 Starting in PRODUCTION mode..."
-        docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+        docker compose -f docker compose.yml -f docker compose.prod.yml up -d --build
         ;;
     "stop")
         echo "🛑 Stopping all services..."
-        docker-compose down
+        docker compose down
         echo "✅ All services stopped"
         exit 0
         ;;
     "restart")
         echo "🔄 Restarting services..."
-        docker-compose restart
+        docker compose restart
         echo "✅ Services restarted"
         exit 0
         ;;
     "logs")
         echo "📋 Showing logs (Ctrl+C to exit)..."
-        docker-compose logs -f
+        docker compose logs -f
         exit 0
         ;;
     "status")
         echo "📊 Service status:"
-        docker-compose ps
+        docker compose ps
         exit 0
         ;;
     "clean")
         echo "⚠️  WARNING: This will remove all containers and volumes"
         read -p "Are you sure? (yes/no): " confirm
         if [ "$confirm" = "yes" ]; then
-            docker-compose down -v
+            docker compose down -v
             echo "✅ Cleanup complete"
         else
             echo "❌ Cleanup cancelled"
@@ -105,7 +105,7 @@ echo "⏳ Waiting for services to start..."
 sleep 5
 
 # Check if services are running
-if docker-compose ps | grep -q "Up"; then
+if docker compose ps | grep -q "Up"; then
     echo "✅ Services started successfully!"
     echo ""
     echo "🌐 Application URLs:"
@@ -113,12 +113,12 @@ if docker-compose ps | grep -q "Up"; then
     echo "   - MongoDB: localhost:27017"
     echo ""
     echo "📋 Useful commands:"
-    echo "   View logs:    docker-compose logs -f"
-    echo "   Stop:         docker-compose down"
-    echo "   Restart:      docker-compose restart"
-    echo "   Status:       docker-compose ps"
+    echo "   View logs:    docker compose logs -f"
+    echo "   Stop:         docker compose down"
+    echo "   Restart:      docker compose restart"
+    echo "   Status:       docker compose ps"
 else
     echo "❌ Error: Services failed to start"
-    echo "Check logs with: docker-compose logs"
+    echo "Check logs with: docker compose logs"
     exit 1
 fi

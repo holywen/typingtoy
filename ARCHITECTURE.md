@@ -203,8 +203,8 @@ typingtoy/
 │   ├── manifest.json                # PWA manifest
 │   └── robots.txt                   # Static robots.txt
 │
-├── docker-compose.yml               # Docker Compose config
-├── docker-compose.prod.yml          # Production overrides
+├── docker compose.yml               # Docker Compose config
+├── docker compose.prod.yml          # Production overrides
 ├── Dockerfile                       # Docker build config
 ├── docker-start.sh                  # Helper script
 ├── Makefile                         # Docker commands
@@ -538,8 +538,8 @@ const { t } = useLanguage();
 - Persistent volumes: `mongodb-data`, `redis-data`
 
 ### Environment
-- Development: `docker-compose.yml`
-- Production: `docker-compose.prod.yml`
+- Development: `docker compose.yml`
+- Production: `docker compose.prod.yml`
 
 ## Performance Optimizations
 
@@ -605,7 +605,7 @@ const { t } = useLanguage();
 
 ### Docker Deployment (Recommended)
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### Vercel Deployment (Alternative)

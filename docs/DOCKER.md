@@ -64,7 +64,7 @@ make up
 
 **Option C: Using Docker Compose directly**
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### 3. Access the Application
@@ -92,7 +92,7 @@ That's it! 🎉
 
 ### Optional Services
 
-Uncomment in `docker-compose.yml` if needed:
+Uncomment in `docker compose.yml` if needed:
 
 3. **redis** - Redis cache
    - Port: 6379
@@ -116,7 +116,7 @@ openssl rand -base64 32
 ```
 
 **Enable MongoDB authentication:**
-Uncomment in `docker-compose.yml`:
+Uncomment in `docker compose.yml`:
 ```yaml
 environment:
   MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
@@ -178,7 +178,7 @@ certbot renew --dry-run
 # or
 make prod
 # or
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker compose.yml -f docker compose.prod.yml up -d
 ```
 
 ---
@@ -214,49 +214,49 @@ make db-shell    # Open MongoDB shell
 
 ```bash
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Stop services
-docker-compose stop
-docker-compose down
+docker compose stop
+docker compose down
 
 # Restart services
-docker-compose restart
+docker compose restart
 
 # View running containers
-docker-compose ps
+docker compose ps
 
 # View logs
-docker-compose logs -f
-docker-compose logs -f app          # Specific service
-docker-compose logs --tail=100 app  # Last 100 lines
+docker compose logs -f
+docker compose logs -f app          # Specific service
+docker compose logs --tail=100 app  # Last 100 lines
 
 # Remove stopped containers
-docker-compose rm
+docker compose rm
 ```
 
 ### Rebuilding
 
 ```bash
 # Rebuild app after code changes
-docker-compose up -d --build app
+docker compose up -d --build app
 
 # Rebuild all services
-docker-compose build --no-cache
-docker-compose up -d
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### Database Management
 
 ```bash
 # Access MongoDB shell
-docker-compose exec mongodb mongosh typingtoy
+docker compose exec mongodb mongosh typingtoy
 
 # Backup database
-docker-compose exec mongodb mongodump --db=typingtoy --out=/data/backup
+docker compose exec mongodb mongodump --db=typingtoy --out=/data/backup
 
 # Restore database
-docker-compose exec mongodb mongorestore --db=typingtoy /data/backup/typingtoy
+docker compose exec mongodb mongorestore --db=typingtoy /data/backup/typingtoy
 ```
 
 ---
@@ -294,7 +294,7 @@ docker volume ls | grep typingtoy
 ### Remove volumes (⚠️ WARNING: Deletes all data)
 
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
 
 ---
@@ -318,12 +318,12 @@ docker stats typingtoy-app
 docker inspect typingtoy-app
 
 # View container processes
-docker-compose top
+docker compose top
 ```
 
 ### Health Checks
 
-Add to `docker-compose.yml`:
+Add to `docker compose.yml`:
 
 ```yaml
 services:
@@ -350,24 +350,24 @@ services:
 
 1. Check logs:
    ```bash
-   docker-compose logs app
+   docker compose logs app
    ```
 
 2. Verify environment variables:
    ```bash
-   docker-compose config
+   docker compose config
    ```
 
 3. Ensure MongoDB is running:
    ```bash
-   docker-compose ps mongodb
+   docker compose ps mongodb
    ```
 
 ### Cannot connect to MongoDB
 
 1. Check MongoDB logs:
    ```bash
-   docker-compose logs mongodb
+   docker compose logs mongodb
    ```
 
 2. Verify network:
@@ -377,12 +377,12 @@ services:
 
 3. Test connection from app container:
    ```bash
-   docker-compose exec app ping mongodb
+   docker compose exec app ping mongodb
    ```
 
 ### Port already in use
 
-Change ports in `docker-compose.yml`:
+Change ports in `docker compose.yml`:
 
 ```yaml
 services:
@@ -395,7 +395,7 @@ services:
 
 ```bash
 # Check what went wrong
-docker-compose logs
+docker compose logs
 
 # Check if ports are available
 lsof -i :3000
@@ -406,17 +406,17 @@ lsof -i :27017
 
 ```bash
 # Stop and remove everything
-docker-compose down -v
+docker compose down -v
 
 # Start fresh
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ### Container keeps restarting
 
 ```bash
 # Check logs for errors
-docker-compose logs app
+docker compose logs app
 
 # Check resource limits
 docker stats
@@ -434,11 +434,11 @@ docker inspect typingtoy-app
 git pull
 
 # Rebuild and restart
-docker-compose up -d --build app
+docker compose up -d --build app
 
 # Or rebuild everything
-docker-compose down
-docker-compose up -d --build
+docker compose down
+docker compose up -d --build
 ```
 
 ---
@@ -449,7 +449,7 @@ docker-compose up -d --build
 
 ```bash
 # Use development environment
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+docker compose -f docker compose.yml -f docker compose.dev.yml up
 
 # Features:
 # - Hot reload enabled
@@ -461,7 +461,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 ```bash
 # Use production environment
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker compose.yml -f docker compose.prod.yml up -d
 
 # Features:
 # - Optimized builds
@@ -488,17 +488,17 @@ Benefits:
 
 ## Environment-Specific Configurations
 
-### docker-compose.yml (base)
+### docker compose.yml (base)
 - Common configuration for all environments
 - Network setup
 - Volume definitions
 
-### docker-compose.dev.yml (development)
+### docker compose.dev.yml (development)
 - Development-specific overrides
 - Enable hot reload
 - Mount source code volumes
 
-### docker-compose.prod.yml (production)
+### docker compose.prod.yml (production)
 - Production-specific overrides
 - Resource limits
 - Security settings
@@ -509,7 +509,7 @@ Benefits:
 ## Support
 
 For issues and questions:
-- Check the logs: `docker-compose logs`
+- Check the logs: `docker compose logs`
 - Review `.env` configuration
 - Ensure all required ports are available
 - Verify Docker and Docker Compose versions

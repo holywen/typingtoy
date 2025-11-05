@@ -221,7 +221,7 @@ Quick start:
 cp .env.example .env
 
 # Start with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # Or use the helper script
 ./docker-start.sh dev
