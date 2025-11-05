@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { GameType } from '@/types/multiplayer';
+import { getPlayerDisplayName } from '@/lib/services/deviceId';
 import RoomList from './RoomList';
 import CreateRoomDialog from './CreateRoomDialog';
 import QuickMatchButton from './QuickMatchButton';
@@ -10,9 +11,11 @@ import OnlinePlayerList from './OnlinePlayerList';
 
 interface GameLobbyProps {
   deviceIdentity: any;
+  session: any;
 }
 
-export default function GameLobby({ deviceIdentity }: GameLobbyProps) {
+export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
+  const displayName = getPlayerDisplayName(session?.user, deviceIdentity);
   const [selectedGameType, setSelectedGameType] = useState<GameType>('falling-blocks');
   const [showCreateRoom, setShowCreateRoom] = useState(false);
 
@@ -49,7 +52,7 @@ export default function GameLobby({ deviceIdentity }: GameLobbyProps) {
               Multiplayer Lobby
             </h1>
             <p className="text-gray-600 dark:text-gray-300 mt-1">
-              Playing as: <span className="font-semibold">{deviceIdentity?.displayName}</span>
+              Playing as: <span className="font-semibold">{displayName}</span>
             </p>
           </div>
         </div>
@@ -97,7 +100,7 @@ export default function GameLobby({ deviceIdentity }: GameLobbyProps) {
               <QuickMatchButton
                 gameType={selectedGameType}
                 playerId={deviceIdentity?.deviceId}
-                displayName={deviceIdentity?.displayName}
+                displayName={displayName}
               />
             </div>
           </div>
@@ -106,7 +109,7 @@ export default function GameLobby({ deviceIdentity }: GameLobbyProps) {
           <RoomList
             gameType={selectedGameType}
             playerId={deviceIdentity?.deviceId}
-            displayName={deviceIdentity?.displayName}
+            displayName={displayName}
           />
         </div>
 
@@ -115,7 +118,7 @@ export default function GameLobby({ deviceIdentity }: GameLobbyProps) {
           <OnlinePlayerList />
           <ChatBox
             playerId={deviceIdentity?.deviceId}
-            displayName={deviceIdentity?.displayName}
+            displayName={displayName}
           />
         </div>
       </div>
@@ -125,7 +128,7 @@ export default function GameLobby({ deviceIdentity }: GameLobbyProps) {
         <CreateRoomDialog
           gameType={selectedGameType}
           playerId={deviceIdentity?.deviceId}
-          displayName={deviceIdentity?.displayName}
+          displayName={displayName}
           onClose={() => setShowCreateRoom(false)}
         />
       )}

@@ -161,7 +161,7 @@ export default function MultiplayerPage() {
           </button>
         </div>
 
-        <GameLobby deviceIdentity={deviceIdentity} />
+        <GameLobby deviceIdentity={deviceIdentity} session={session} />
       </div>
     </div>
   );
