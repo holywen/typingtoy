@@ -54,8 +54,15 @@ COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/types ./types
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
-# Copy node_modules for ts-node and TypeScript
-COPY --from=builder /app/node_modules ./node_modules
+# Copy node_modules from deps stage (production dependencies only)
+COPY --from=deps /app/node_modules ./node_modules
+
+# Also need ts-node and typescript for running server.ts
+# Copy these from builder which has all dependencies
+COPY --from=builder /app/node_modules/ts-node ./node_modules/ts-node
+COPY --from=builder /app/node_modules/typescript ./node_modules/typescript
+COPY --from=builder /app/node_modules/@types ./node_modules/@types
+COPY --from=builder /app/node_modules/tsconfig-paths ./node_modules/tsconfig-paths
 
 # Set correct permissions
 RUN chown -R nextjs:nodejs /app
