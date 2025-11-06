@@ -6,6 +6,7 @@ import clientPromise from './db/mongoClient';
 import connectDB from './db/mongodb';
 import User from './db/models/User';
 import bcrypt from 'bcryptjs';
+import { ObjectId } from 'mongodb';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
@@ -73,45 +74,51 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      // For OAuth providers, check if this is the first user and set as admin
-      if (account?.provider === 'google') {
-        try {
-          // Use the same MongoDB client that MongoDBAdapter uses
-          const client = await clientPromise;
-          const db = client.db();
-          const usersCollection = db.collection('users');
-
-          // Check total user count in the same database as MongoDBAdapter
-          const userCount = await usersCollection.countDocuments();
-
-          console.log(`[OAuth SignIn] User count: ${userCount}, Email: ${user.email}, DB: ${db.databaseName}`);
-
-          // If this is the first user, set them as admin and auto-verify email
-          if (userCount <= 1) {
-            // Use native MongoDB updateOne to directly update the collection
-            const result = await usersCollection.updateOne(
-              { email: user.email },
-              {
-                $set: {
-                  role: 'admin',
-                  emailVerified: new Date()
-                }
-              }
-            );
-
-            console.log(`[OAuth SignIn] Set first user as admin. Modified: ${result.modifiedCount}`);
-          }
-        } catch (error) {
-          console.error('[OAuth SignIn] Error setting admin role:', error);
-          // Don't block sign-in if this fails
-        }
-      }
+      // Allow sign in
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, trigger }) {
       // On sign in (when user object is available)
       if (user) {
         token.id = user.id;
+
+        // For OAuth sign in, check if this is the first user and set as admin
+        if (account?.provider === 'google') {
+          try {
+            // Use the same MongoDB client that MongoDBAdapter uses
+            const client = await clientPromise;
+            const db = client.db();
+            const usersCollection = db.collection('users');
+
+            // Check total user count in the same database as MongoDBAdapter
+            const userCount = await usersCollection.countDocuments();
+
+            console.log(`[OAuth JWT] User count: ${userCount}, User ID: ${user.id}, DB: ${db.databaseName}`);
+
+            // If this is the first user, set them as admin and auto-verify email
+            if (userCount <= 1) {
+              // Use native MongoDB updateOne to directly update the collection
+              const result = await usersCollection.updateOne(
+                { _id: new ObjectId(user.id) },
+                {
+                  $set: {
+                    role: 'admin',
+                    emailVerified: new Date()
+                  }
+                }
+              );
+
+              console.log(`[OAuth JWT] Set first user as admin. Matched: ${result.matchedCount}, Modified: ${result.modifiedCount}`);
+
+              // Set role in token immediately
+              if (result.modifiedCount > 0) {
+                token.role = 'admin';
+              }
+            }
+          } catch (error) {
+            console.error('[OAuth JWT] Error setting admin role:', error);
+          }
+        }
       }
 
       // For OAuth providers, if id is not set, use sub (subject) from token
@@ -121,10 +128,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       // Fetch role from database if not already in token
       if (token.id && !token.role) {
-        await connectDB();
-        const dbUser = await User.findById(token.id);
-        if (dbUser) {
-          token.role = dbUser.role;
+        try {
+          const client = await clientPromise;
+          const db = client.db();
+          const usersCollection = db.collection('users');
+
+          // Query by ObjectId
+          const dbUser = await usersCollection.findOne({ _id: new ObjectId(token.id as string) });
+          if (dbUser && dbUser.role) {
+            token.role = dbUser.role;
+          }
+        } catch (error) {
+          console.error('[JWT] Error fetching user role:', error);
         }
       }
 
