@@ -75,22 +75,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ user, account, profile }) {
       // For OAuth providers, check if this is the first user and set as admin
       if (account?.provider === 'google') {
-        await connectDB();
+        try {
+          await connectDB();
 
-        // Check total user count
-        // Note: MongoDBAdapter creates the user before this callback runs,
-        // so we check if userCount <= 1 (the just-created user)
-        const userCount = await User.countDocuments();
+          // Check total user count in the native MongoDB collection
+          // Note: MongoDBAdapter creates the user before this callback runs,
+          // so we check if userCount <= 1 (the just-created user)
+          const userCount = await User.countDocuments();
 
-        // If this is the first user, set them as admin and auto-verify email
-        if (userCount <= 1) {
-          // Find the user that was just created by the adapter
-          const dbUser = await User.findOne({ email: user.email });
-          if (dbUser && dbUser.role !== 'admin') {
-            dbUser.role = 'admin';
-            dbUser.emailVerified = new Date(); // Auto-verify first admin user
-            await dbUser.save();
+          console.log(`[OAuth SignIn] User count: ${userCount}, Email: ${user.email}`);
+
+          // If this is the first user, set them as admin and auto-verify email
+          if (userCount <= 1) {
+            // Use updateOne to directly update the MongoDB collection
+            // This works even if the document doesn't have all Mongoose schema fields
+            const result = await User.updateOne(
+              { email: user.email },
+              {
+                $set: {
+                  role: 'admin',
+                  emailVerified: new Date()
+                }
+              }
+            );
+
+            console.log(`[OAuth SignIn] Set first user as admin. Modified: ${result.modifiedCount}`);
           }
+        } catch (error) {
+          console.error('[OAuth SignIn] Error setting admin role:', error);
+          // Don't block sign-in if this fails
         }
       }
       return true;
