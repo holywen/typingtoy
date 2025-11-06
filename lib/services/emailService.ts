@@ -149,7 +149,7 @@ class EmailService {
               </ul>
             </div>
             <div class="footer">
-              <p>This email was sent by Typing Toy. If you have any questions, please contact us.</p>
+              <p>This email was sent by Typing Toy. If you have any questions, contact us at <a href="mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'typingtoy@444666.best'}" style="color: #2563eb;">${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'typingtoy@444666.best'}</a></p>
               <p>&copy; ${new Date().getFullYear()} Typing Toy. All rights reserved.</p>
             </div>
           </div>
@@ -260,7 +260,7 @@ class EmailService {
               </div>
             </div>
             <div class="footer">
-              <p>This email was sent by Typing Toy. If you have any questions, please contact us.</p>
+              <p>This email was sent by Typing Toy. If you have any questions, contact us at <a href="mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'typingtoy@444666.best'}" style="color: #2563eb;">${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'typingtoy@444666.best'}</a></p>
               <p>&copy; ${new Date().getFullYear()} Typing Toy. All rights reserved.</p>
             </div>
           </div>

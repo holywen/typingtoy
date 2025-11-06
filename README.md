@@ -97,7 +97,10 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
-SMTP_FROM=noreply@typingtoy.com
+SMTP_FROM=typingtoy@444666.best
+
+# Support Email (publicly visible for contact links)
+NEXT_PUBLIC_SUPPORT_EMAIL=typingtoy@444666.best
 
 # OAuth (Optional)
 GOOGLE_CLIENT_ID=your-google-client-id

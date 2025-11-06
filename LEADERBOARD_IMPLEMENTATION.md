@@ -144,6 +144,7 @@ A comprehensive leaderboard system has been successfully implemented for the mul
 
 #### 3. FriendLeaderboard (`/components/leaderboard/FriendLeaderboard.tsx`)
 **Lines:** 165+
+**Status:** Component exists but not currently used in UI (Friends system pending)
 
 **Features:**
 - Friend-only leaderboard display
@@ -181,12 +182,11 @@ A comprehensive leaderboard system has been successfully implemented for the mul
 ### Pages
 
 #### 1. Leaderboard Page (`/app/multiplayer/leaderboard/page.tsx`)
-**Lines:** 180+
+**Lines:** 120+
 
 **Features:**
-- Three main tabs:
+- Two main tabs:
   - **Global Rankings** - Public leaderboard for everyone
-  - **Friends** - Compare with friends (requires authentication)
   - **My Stats** - Personal statistics dashboard (requires authentication)
 - Beautiful gradient background
 - Navigation back to lobby
@@ -194,6 +194,8 @@ A comprehensive leaderboard system has been successfully implemented for the mul
 - Tab-based organization
 - Authentication state handling
 - Sign-in prompts for unauthenticated features
+
+**Note:** Friends leaderboard feature was removed as the friends system is not yet implemented.
 
 ### Integration
 
@@ -234,11 +236,10 @@ A comprehensive leaderboard system has been successfully implemented for the mul
 - **Weekly:** This week's leaders (resets every Monday)
 - **Daily:** Today's top performers (resets daily at midnight UTC)
 
-### Friend System Integration
-- Compare scores with friends
-- Friend-only leaderboards
-- Social competition aspect
-- Privacy-protected (own friends only)
+### Friend System Integration (Pending)
+- Friends system not yet implemented
+- Friend API endpoints exist but are not exposed in UI
+- Can be enabled once friends system is built
 
 ### Comprehensive Statistics
 - Total games played
@@ -345,15 +346,15 @@ A comprehensive leaderboard system has been successfully implemented for the mul
 2. `/lib/services/gameSessionService.ts` (140 lines)
 3. `/app/api/leaderboard/route.ts` (120 lines)
 4. `/app/api/leaderboard/player/route.ts` (80 lines)
-5. `/app/api/leaderboard/friends/route.ts` (80 lines)
+5. `/app/api/leaderboard/friends/route.ts` (80 lines) - API exists but UI removed
 6. `/components/leaderboard/LeaderboardTable.tsx` (170 lines)
 7. `/components/leaderboard/LeaderboardPanel.tsx` (190 lines)
-8. `/components/leaderboard/FriendLeaderboard.tsx` (165 lines)
+8. `/components/leaderboard/FriendLeaderboard.tsx` (165 lines) - Component exists but not in use
 9. `/components/leaderboard/PlayerStats.tsx` (300 lines)
-10. `/app/multiplayer/leaderboard/page.tsx` (180 lines)
+10. `/app/multiplayer/leaderboard/page.tsx` (120 lines) - Updated without Friends tab
 11. `/playwright-tests/test-leaderboard.ts` (170 lines) - Test suite
 
-**Total New Code:** ~1,945 lines
+**Total New Code:** ~1,885 lines
 
 ### Modified (2 files)
 1. `/lib/services/socketHandlers/gameHandlers.ts` - Integrated session saving
@@ -393,10 +394,6 @@ Select period (All Time, Monthly, Weekly, Daily)
 View rankings with beautiful table
     ↓
 See your rank highlighted (if playing)
-    ↓
-(Optional) Switch to Friends tab
-    ↓
-Compare scores with friends only
     ↓
 (Optional) Switch to My Stats tab
     ↓
@@ -477,7 +474,6 @@ The leaderboard system is **fully functional and production-ready**:
 ✅ UI components built
 ✅ Database integration done
 ✅ Automatic score tracking
-✅ Friend comparisons working
 ✅ Statistics dashboard complete
 ✅ Navigation integrated
 ✅ Type-safe throughout
@@ -486,12 +482,15 @@ The leaderboard system is **fully functional and production-ready**:
 ✅ Loading states
 ✅ Authentication support
 ✅ Security measures in place
+⏸️ Friend comparisons available (API ready, UI hidden pending friends system)
 
 **Total Implementation:**
 - 11 new files created
 - 2 files modified
-- ~1,945 lines of production code
+- ~1,885 lines of production code
 - ~170 lines of test code
 - Fully documented and tested
 
-The system provides a complete competitive gaming experience with global rankings, friend comparisons, and detailed personal statistics across all multiplayer typing games.
+The system provides a complete competitive gaming experience with global rankings and detailed personal statistics across all multiplayer typing games.
+
+**Note:** The Friends leaderboard feature is implemented in the backend but hidden from the UI until the friends system is built. The API endpoint and component are ready to be enabled when needed.

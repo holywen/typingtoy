@@ -32,7 +32,10 @@ services:
       - SMTP_SECURE=${SMTP_SECURE:-false}
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASSWORD=${SMTP_PASSWORD:-}
-      - SMTP_FROM=${SMTP_FROM:-noreply@typingtoy.com}
+      - SMTP_FROM=${SMTP_FROM:-typingtoy@444666.best}
+
+      # Support email (publicly visible for contact links)
+      - NEXT_PUBLIC_SUPPORT_EMAIL=${NEXT_PUBLIC_SUPPORT_EMAIL:-typingtoy@444666.best}
 
       # Redis (required for multiplayer features)
       - REDIS_URL=redis://redis:6379

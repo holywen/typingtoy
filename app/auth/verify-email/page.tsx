@@ -174,7 +174,10 @@ function VerifyEmailContent() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Need help?{' '}
-            <a href="mailto:support@typingtoy.com" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <a
+              href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL || 'typingtoy@444666.best'}`}
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
               Contact support
             </a>
           </p>
