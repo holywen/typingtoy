@@ -3,9 +3,9 @@
 // LeaderboardTable Component
 // Displays rankings in a table format with player info and stats
 
-import React from 'react';
 import type { LeaderboardEntry } from '@/types/multiplayer';
 import { Trophy, Medal, Award, Crown } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface LeaderboardTableProps {
   entries: LeaderboardEntry[];
@@ -20,13 +20,17 @@ export default function LeaderboardTable({
   currentPlayerId,
   showLevel = false,
   showTime = false,
-  emptyMessage = 'No entries yet. Be the first!',
+  emptyMessage,
 }: LeaderboardTableProps) {
+  const { t } = useLanguage();
+
+  const defaultEmptyMessage = emptyMessage || t.leaderboard.noEntries;
+
   if (entries.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
         <Trophy className="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <p>{emptyMessage}</p>
+        <p>{defaultEmptyMessage}</p>
       </div>
     );
   }
@@ -63,28 +67,28 @@ export default function LeaderboardTable({
         <thead>
           <tr className="border-b border-gray-200 dark:border-gray-700">
             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Rank
+              {t.leaderboard.rank}
             </th>
             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Player
+              {t.leaderboard.player}
             </th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Score
+              {t.leaderboard.score}
             </th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-              WPM
+              {t.leaderboard.wpm}
             </th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Accuracy
+              {t.leaderboard.accuracy}
             </th>
             {showLevel && (
               <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Level
+                {t.leaderboard.level}
               </th>
             )}
             {showTime && (
               <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
-                Time
+                {t.leaderboard.time}
               </th>
             )}
           </tr>
@@ -127,12 +131,12 @@ export default function LeaderboardTable({
                     </span>
                     {isCurrentPlayer && (
                       <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
-                        You
+                        {t.multiplayer.you}
                       </span>
                     )}
                     {entry.playerType === 'guest' && (
                       <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full">
-                        Guest
+                        {t.leaderboard.guest}
                       </span>
                     )}
                   </div>

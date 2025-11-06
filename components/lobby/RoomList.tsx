@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameRoom, GameType } from '@/types/multiplayer';
 import { getSocket, emitSocketEvent, onSocketEvent, offSocketEvent } from '@/lib/services/socketClient';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface RoomListProps {
   gameType: GameType;
@@ -12,6 +13,7 @@ interface RoomListProps {
 }
 
 export default function RoomList({ gameType, playerId, displayName }: RoomListProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const [rooms, setRooms] = useState<GameRoom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ export default function RoomList({ gameType, playerId, displayName }: RoomListPr
   if (loading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Available Rooms</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t.multiplayer.availableRooms}</h2>
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
@@ -113,7 +115,7 @@ export default function RoomList({ gameType, playerId, displayName }: RoomListPr
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
       <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-        Available Rooms ({rooms.length})
+        {t.multiplayer.availableRooms} ({rooms.length})
       </h2>
 
       {joinError && (
@@ -127,8 +129,7 @@ export default function RoomList({ gameType, playerId, displayName }: RoomListPr
           <svg className="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
-          <p className="text-lg">No rooms available</p>
-          <p className="text-sm mt-1">Create one or try quick match!</p>
+          <p className="text-lg">{t.multiplayer.noRooms}</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -162,7 +163,7 @@ export default function RoomList({ gameType, playerId, displayName }: RoomListPr
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      Host: {room.players.find(p => p.isHost)?.displayName}
+                      {t.multiplayer.host}: {room.players.find(p => p.isHost)?.displayName}
                     </span>
                   </div>
                 </div>
@@ -181,12 +182,12 @@ export default function RoomList({ gameType, playerId, displayName }: RoomListPr
                   {joiningRoomId === room.roomId ? (
                     <span className="flex items-center gap-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Joining...
+                      {t.multiplayer.join}...
                     </span>
                   ) : room.players.length >= room.maxPlayers ? (
-                    'Full'
+                    t.multiplayer.roomFull
                   ) : (
-                    'Join'
+                    t.multiplayer.join
                   )}
                 </button>
               </div>

@@ -12,6 +12,7 @@ interface UserDocument extends mongoose.Document {
   settings: {
     keyboardLayout: string;
     soundEnabled: boolean;
+    language: string;
   };
   lastPositions: Map<string, {
     lessonId: string;
@@ -80,6 +81,11 @@ const UserSchema = new Schema<UserDocument>(
       soundEnabled: {
         type: Boolean,
         default: true,
+      },
+      language: {
+        type: String,
+        enum: ['en', 'zh', 'es', 'fr', 'ja', 'th'],
+        default: 'en',
       },
     },
     lastPositions: {

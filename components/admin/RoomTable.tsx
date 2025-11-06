@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface PlayerInRoom {
   playerId: string;
@@ -35,11 +36,12 @@ export default function RoomTable({
   onUpdateRoom,
   onDeleteRoom,
 }: RoomTableProps) {
+  const { t } = useLanguage();
   const [expandedRoomId, setExpandedRoomId] = useState<string | null>(null);
   const [updatingRoomId, setUpdatingRoomId] = useState<string | null>(null);
 
   const handleForceFinish = async (roomId: string) => {
-    if (confirm('Are you sure you want to force finish this room?')) {
+    if (confirm(t.admin.confirmForceFinish)) {
       setUpdatingRoomId(roomId);
       try {
         await onUpdateRoom(roomId, { status: 'finished' });
@@ -50,7 +52,7 @@ export default function RoomTable({
   };
 
   const handleDelete = async (roomId: string, roomName: string) => {
-    if (confirm(`Are you sure you want to delete room "${roomName}"? This action cannot be undone.`)) {
+    if (confirm(t.admin.confirmDeleteRoom.replace('{name}', roomName))) {
       setUpdatingRoomId(roomId);
       try {
         await onDeleteRoom(roomId);
@@ -95,22 +97,22 @@ export default function RoomTable({
         <thead className="bg-gray-50 dark:bg-gray-700">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Room
+              {t.admin.room}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Game Type
+              {t.admin.gameTypeColumn}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Players
+              {t.admin.playersColumn}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Status
+              {t.admin.statusColumn}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Created
+              {t.admin.createdColumn}
             </th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Actions
+              {t.admin.actionsColumn}
             </th>
           </tr>
         </thead>
@@ -155,7 +157,7 @@ export default function RoomTable({
                         disabled={updatingRoomId === room._id}
                         className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
                       >
-                        Force Finish
+                        {t.admin.forceFinish}
                       </button>
                     )}
                     <button
@@ -166,7 +168,7 @@ export default function RoomTable({
                       disabled={updatingRoomId === room._id}
                       className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                     >
-                      Delete
+                      {t.admin.delete}
                     </button>
                   </div>
                 </td>
@@ -175,9 +177,9 @@ export default function RoomTable({
                 <tr>
                   <td colSpan={6} className="px-6 py-4 bg-gray-50 dark:bg-gray-700">
                     <div className="text-sm">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Players:</h4>
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">{t.admin.playersLabel}</h4>
                       {room.players.length === 0 ? (
-                        <p className="text-gray-500 dark:text-gray-400">No players in this room</p>
+                        <p className="text-gray-500 dark:text-gray-400">{t.admin.noPlayersInRoom}</p>
                       ) : (
                         <ul className="space-y-2">
                           {room.players.map((player, index) => (
@@ -185,17 +187,17 @@ export default function RoomTable({
                               <span>{player.displayName}</span>
                               {player.isHost && (
                                 <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded">
-                                  Host
+                                  {t.admin.host}
                                 </span>
                               )}
                               {player.isReady && (
                                 <span className="px-2 py-0.5 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 rounded">
-                                  Ready
+                                  {t.admin.ready}
                                 </span>
                               )}
                               {!player.isConnected && (
                                 <span className="px-2 py-0.5 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100 rounded">
-                                  Disconnected
+                                  {t.admin.disconnected}
                                 </span>
                               )}
                             </li>
@@ -204,12 +206,12 @@ export default function RoomTable({
                       )}
                       {room.startedAt && (
                         <div className="mt-4 text-gray-600 dark:text-gray-400">
-                          <strong>Started:</strong> {formatDate(room.startedAt)}
+                          <strong>{t.admin.started}</strong> {formatDate(room.startedAt)}
                         </div>
                       )}
                       {room.endedAt && (
                         <div className="mt-2 text-gray-600 dark:text-gray-400">
-                          <strong>Ended:</strong> {formatDate(room.endedAt)}
+                          <strong>{t.admin.ended}</strong> {formatDate(room.endedAt)}
                         </div>
                       )}
                     </div>

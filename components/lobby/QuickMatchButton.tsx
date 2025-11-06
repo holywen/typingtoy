@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { GameType } from '@/types/multiplayer';
 import { emitSocketEvent, onSocketEvent, offSocketEvent } from '@/lib/services/socketClient';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface QuickMatchButtonProps {
   gameType: GameType;
@@ -12,6 +13,7 @@ interface QuickMatchButtonProps {
 }
 
 export default function QuickMatchButton({ gameType, playerId, displayName }: QuickMatchButtonProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const [isMatching, setIsMatching] = useState(false);
   const [queueSize, setQueueSize] = useState(0);
@@ -94,7 +96,7 @@ export default function QuickMatchButton({ gameType, playerId, displayName }: Qu
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          Quick Match
+          {t.multiplayer.quickMatch}
         </button>
       ) : (
         <div className="space-y-3">
@@ -103,11 +105,11 @@ export default function QuickMatchButton({ gameType, playerId, displayName }: Qu
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
             <p className="text-center text-sm text-blue-900 dark:text-blue-100 font-medium">
-              Searching for opponents...
+              {t.multiplayer.searching}
             </p>
             {queueSize > 0 && (
               <p className="text-center text-xs text-blue-700 dark:text-blue-300 mt-1">
-                {queueSize} player{queueSize !== 1 ? 's' : ''} in queue
+                {queueSize} {t.multiplayer.players.toLowerCase()}{queueSize !== 1 ? '' : ''} in queue
               </p>
             )}
           </div>
@@ -115,7 +117,7 @@ export default function QuickMatchButton({ gameType, playerId, displayName }: Qu
             onClick={handleCancel}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
-            Cancel
+            {t.multiplayer.cancel}
           </button>
         </div>
       )}

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import LeaderboardTable from './LeaderboardTable';
 import type { LeaderboardEntry, GameType, LeaderboardPeriod } from '@/types/multiplayer';
 import { RefreshCw, Users, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface LeaderboardPanelProps {
   initialGameType?: GameType;
@@ -19,6 +20,7 @@ export default function LeaderboardPanel({
   currentPlayerId,
   showGameTypeSelector = true,
 }: LeaderboardPanelProps) {
+  const { t } = useLanguage();
   const [gameType, setGameType] = useState<GameType>(initialGameType);
   const [period, setPeriod] = useState<LeaderboardPeriod>('all-time');
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -26,17 +28,17 @@ export default function LeaderboardPanel({
   const [error, setError] = useState<string | null>(null);
 
   const gameTypes: { value: GameType; label: string }[] = [
-    { value: 'falling-blocks', label: 'Falling Blocks' },
-    { value: 'blink', label: 'Blink' },
-    { value: 'falling-words', label: 'Falling Words' },
-    { value: 'speed-race', label: 'Speed Race' },
+    { value: 'falling-blocks', label: t.multiplayer.gameTypes.fallingBlocks },
+    { value: 'blink', label: t.multiplayer.gameTypes.blink },
+    { value: 'falling-words', label: t.multiplayer.gameTypes.fallingWords },
+    { value: 'speed-race', label: t.multiplayer.gameTypes.speedRace },
   ];
 
   const periods: { value: LeaderboardPeriod; label: string; icon: React.ReactNode }[] = [
-    { value: 'all-time', label: 'All Time', icon: <TrendingUp className="w-4 h-4" /> },
-    { value: 'monthly', label: 'This Month', icon: <Calendar className="w-4 h-4" /> },
-    { value: 'weekly', label: 'This Week', icon: <Clock className="w-4 h-4" /> },
-    { value: 'daily', label: 'Today', icon: <Users className="w-4 h-4" /> },
+    { value: 'all-time', label: t.leaderboard.periods.allTime, icon: <TrendingUp className="w-4 h-4" /> },
+    { value: 'monthly', label: t.leaderboard.periods.monthly, icon: <Calendar className="w-4 h-4" /> },
+    { value: 'weekly', label: t.leaderboard.periods.weekly, icon: <Clock className="w-4 h-4" /> },
+    { value: 'daily', label: t.leaderboard.periods.daily, icon: <Users className="w-4 h-4" /> },
   ];
 
   useEffect(() => {
@@ -53,14 +55,14 @@ export default function LeaderboardPanel({
       );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch leaderboard');
+        throw new Error(t.multiplayer.connectionError);
       }
 
       const data = await response.json();
       setEntries(data.entries || []);
     } catch (err) {
       console.error('Error fetching leaderboard:', err);
-      setError('Failed to load leaderboard. Please try again.');
+      setError(t.multiplayer.connectionError);
     } finally {
       setLoading(false);
     }
@@ -77,13 +79,13 @@ export default function LeaderboardPanel({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <TrendingUp className="w-6 h-6" />
-            Leaderboard
+            {t.leaderboard.title}
           </h2>
           <button
             onClick={handleRefresh}
             disabled={loading}
             className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
-            title="Refresh leaderboard"
+            title={t.leaderboard.refresh}
           >
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -143,7 +145,7 @@ export default function LeaderboardPanel({
         {loading ? (
           <div className="text-center py-12">
             <RefreshCw className="w-12 h-12 mx-auto mb-4 animate-spin text-blue-600" />
-            <p className="text-gray-600 dark:text-gray-400">Loading leaderboard...</p>
+            <p className="text-gray-600 dark:text-gray-400">{t.leaderboard.refresh}...</p>
           </div>
         ) : (
           <LeaderboardTable

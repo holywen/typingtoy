@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface User {
   _id: string;
@@ -24,11 +25,13 @@ export default function UserTable({
   onDeleteUser,
   currentUserId,
 }: UserTableProps) {
+  const { t } = useLanguage();
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   const handleRoleChange = async (userId: string, newRole: 'user' | 'admin') => {
-    if (confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
+    const roleText = newRole === 'admin' ? t.admin.admin : t.admin.user;
+    if (confirm(t.admin.confirmRoleChange.replace('{role}', roleText))) {
       setUpdatingUserId(userId);
       try {
         await onUpdateUser(userId, { role: newRole });
@@ -39,7 +42,7 @@ export default function UserTable({
   };
 
   const handleDelete = async (userId: string, userEmail: string) => {
-    if (confirm(`Are you sure you want to delete user ${userEmail}? This action cannot be undone.`)) {
+    if (confirm(t.admin.confirmDeleteUser.replace('{email}', userEmail))) {
       setUpdatingUserId(userId);
       try {
         await onDeleteUser(userId);
@@ -63,19 +66,19 @@ export default function UserTable({
         <thead className="bg-gray-50 dark:bg-gray-700">
           <tr>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              User
+              {t.admin.userColumn}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Role
+              {t.admin.role}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Status
+              {t.admin.status}
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Joined
+              {t.admin.joined}
             </th>
             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-              Actions
+              {t.admin.actions}
             </th>
           </tr>
         </thead>
@@ -86,10 +89,10 @@ export default function UserTable({
                 <div className="flex items-center">
                   <div>
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
-                      {user.name || 'No name'}
+                      {user.name || t.admin.noName}
                       {currentUserId === user._id && (
                         <span className="ml-2 px-2 py-1 text-xs font-semibold text-blue-800 bg-blue-100 dark:text-blue-100 dark:bg-blue-800 rounded">
-                          You
+                          {t.multiplayer.you}
                         </span>
                       )}
                     </div>
@@ -114,18 +117,18 @@ export default function UserTable({
                       : 'cursor-pointer hover:bg-opacity-80'
                   }`}
                 >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
+                  <option value="user">{t.admin.user}</option>
+                  <option value="admin">{t.admin.admin}</option>
                 </select>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 {user.emailVerified ? (
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                    Verified
+                    {t.admin.verified}
                   </span>
                 ) : (
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
-                    Unverified
+                    {t.admin.unverified}
                   </span>
                 )}
               </td>
@@ -142,7 +145,7 @@ export default function UserTable({
                       : ''
                   }`}
                 >
-                  Delete
+                  {t.admin.delete}
                 </button>
               </td>
             </tr>

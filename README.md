@@ -10,8 +10,11 @@ A modern, production-ready touch typing practice website built with Next.js 15, 
 - ✅ **Speed Test Mode** - Practice with randomized texts (500-1000 words)
 - ✅ **Responsive Design** - Works on desktop and mobile devices
 - ✅ **Dark Mode Support** - System-aware theme switching
-- ✅ **Multiple Keyboard Layouts** - QWERTY, Dvorak, Colemak, and more
-- ✅ **Multilingual Support (i18n)** - English, Chinese, Japanese, Spanish, French, Thai
+- ✅ **Multiple Keyboard Layouts** - QWERTY, Dvorak, Colemak, AZERTY, QWERTZ
+- ✅ **Multilingual Support (i18n)** - 6 languages with database persistence for authenticated users
+  - English, Chinese, Japanese, Spanish, French, Thai
+  - Language preference synced across devices
+  - Full admin dashboard internationalization
 - ✅ **SEO Optimized** - Full metadata, sitemap, robots.txt, and social sharing
 - ✅ **Docker Deployment** - Complete Docker and Docker Compose setup
 - ✅ **User Authentication** - NextAuth.js 5.0 with email verification and OAuth (Google)
@@ -45,8 +48,10 @@ A modern, production-ready touch typing practice website built with Next.js 15, 
 - **Zod 3.24** - Schema validation
 
 ### Internationalization
-- **Custom i18n** - React Context-based i18n system
-- **6 Languages** - English, Chinese, Japanese, Spanish, French, Thai
+- **Custom i18n** - React Context-based i18n system with NextAuth integration
+- **6 Languages** - English, Chinese, Japanese, Spanish, French, Thai (68+ keys per language)
+- **Database Persistence** - Language preference saved to MongoDB for authenticated users
+- **Cross-Device Sync** - Settings synchronized across devices and browsers
 
 ### Development & Build
 - **ESLint 9** - Code linting

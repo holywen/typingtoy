@@ -9,8 +9,10 @@ import { useRouter } from 'next/navigation';
 import LeaderboardPanel from '@/components/leaderboard/LeaderboardPanel';
 import PlayerStats from '@/components/leaderboard/PlayerStats';
 import { ArrowLeft, BarChart3, Trophy } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function LeaderboardPage() {
+  const { t } = useLanguage();
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'global' | 'stats'>('global');
@@ -24,8 +26,8 @@ export default function LeaderboardPage() {
   }
 
   const tabs = [
-    { id: 'global' as const, label: 'Global Rankings', icon: Trophy },
-    { id: 'stats' as const, label: 'My Stats', icon: BarChart3, requiresAuth: true },
+    { id: 'global' as const, label: t.leaderboard.globalRankings, icon: Trophy },
+    { id: 'stats' as const, label: t.leaderboard.myStats, icon: BarChart3, requiresAuth: true },
   ];
 
   return (
@@ -38,14 +40,14 @@ export default function LeaderboardPage() {
             className="mb-4 flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Lobby
+            {t.multiplayer.backToLobby}
           </button>
 
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Leaderboard
+            {t.leaderboard.title}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View global rankings and track your progress
+            {t.leaderboard.description}
           </p>
         </div>
 
@@ -73,7 +75,7 @@ export default function LeaderboardPage() {
                 <Icon className="w-5 h-5" />
                 {tab.label}
                 {tab.requiresAuth && status !== 'authenticated' && (
-                  <span className="text-xs opacity-75">(Sign in required)</span>
+                  <span className="text-xs opacity-75">({t.auth.signInButton} required)</span>
                 )}
               </button>
             );
@@ -97,16 +99,16 @@ export default function LeaderboardPage() {
             <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-12 text-center">
               <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Sign In Required
+                {t.auth.signInButton} Required
               </h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Sign in to view your statistics
+                {t.leaderboard.signInRequired}
               </p>
               <button
                 onClick={() => router.push('/auth/signin?callbackUrl=/multiplayer/leaderboard')}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Sign In
+                {t.auth.signInButton}
               </button>
             </div>
           )}

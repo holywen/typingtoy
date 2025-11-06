@@ -30,6 +30,9 @@ This project uses Next.js 16 with the App Router pattern. The routing is file-ba
 - `app/lessons/[id]/page.tsx` - Individual lesson with sub-exercises (dynamic route)
 - `app/practice/page.tsx` - Custom practice page with preset texts
 - `app/progress/page.tsx` - User progress tracking and statistics
+- `app/admin/*` - Admin dashboard (role-protected, fully internationalized)
+- `app/multiplayer/*` - Multiplayer features with leaderboard
+- `app/auth/*` - Authentication pages (sign in, sign up, email verification)
 
 All page components are client components (`'use client'`) since they require interactivity.
 
@@ -80,27 +83,40 @@ Dynamic lesson pages support:
 
 ### Data Persistence
 
-**Current Implementation** (Client-side only):
+**Hybrid Implementation** (Client-side + Server-side):
 
-Progress is stored in `localStorage` via `lib/services/progressStorage.ts`:
-- Max 100 recent sessions stored
+**LocalStorage** (`lib/services/progressStorage.ts`):
+- Max 100 recent sessions stored locally
 - Stores metrics, timestamps, lesson/exercise IDs
 - Provides statistics, trends, export/import functionality
+- Fallback for unauthenticated users
 - **Resume functionality**: Tracks user's last position (lesson ID + exercise index)
   - `saveLastPosition()` - Saves current position only when user starts typing (presses first key)
   - `getLastPosition()` - Retrieves last saved position for resume feature
   - Home page "Start/Resume Typing" button automatically resumes from last position
   - Position is saved lazily: only when user actually starts an exercise, not just by viewing it
 
-**Planned Implementation** (Not yet integrated):
+**Database (MongoDB)** - Fully Implemented:
+- `User.ts` - User accounts with role-based access (user/admin)
+  - Settings: keyboard layout, sound enabled, **language preference**
+  - First user automatically becomes admin
+  - Email verification with 24-hour expiring tokens
+- `Progress.ts` - User progress history (synced from localStorage)
+- `VerificationToken.ts` - Email verification tokens with TTL index
 
-Database models are defined in `lib/db/models/`:
-- `User.ts` - User accounts with settings
-- `Lesson.ts` - Lesson content (to replace static data)
-- `Progress.ts` - User progress history
-- MongoDB connection ready in `lib/db/mongodb.ts` but not yet used
+**Authentication** (`lib/auth.ts`) - Fully Implemented:
+- NextAuth.js 5.0 (Beta 30) with JWT sessions
+- Email/password authentication with bcrypt hashing (10 rounds)
+- Google OAuth integration
+- Email verification via Nodemailer (SMTP)
+- Role-based access control (user/admin)
+- Session management with role propagation
 
-Authentication with NextAuth.js is configured but not implemented. Environment variables are defined in `.env.local.example`.
+**User Settings Sync** (`/api/user/settings`):
+- GET: Retrieve user settings from database
+- PATCH: Update user settings (including language preference)
+- Authenticated users: Settings synced to database (cross-device)
+- Unauthenticated users: Settings stored in localStorage only
 
 ### TypeScript Types
 
@@ -145,9 +161,23 @@ Currently uses React hooks (no Zustand integration yet despite package.json):
 **User Settings** (`lib/services/userSettings.ts`)
 - Theme, keyboard layout, language preferences
 - Sound toggle, keyboard display toggle
-- Stored in localStorage
+- Stored in localStorage (immediate persistence)
+- **Language persistence for authenticated users**:
+  - Saved to database via `/api/user/settings`
+  - Synced across devices and browsers
+  - Loaded from database on page refresh
+  - Falls back to localStorage if not authenticated
 - Keyboard layout selection persists across sessions
 - Available layouts defined in `lib/data/keyboardLayout.ts`
+
+**Internationalization** (`lib/i18n/LanguageContext.tsx`)
+- Custom React Context-based i18n system (not i18next)
+- 6 supported languages: English, Chinese, Spanish, French, Japanese, Thai
+- 68+ admin-specific translation keys per language
+- Type-safe translations with TypeScript inference
+- Integration with NextAuth for authenticated users
+- Database persistence for language preference
+- Usage: `const { t } = useLanguage(); <h1>{t.home.title}</h1>`
 
 ## Important Implementation Notes
 
@@ -167,14 +197,23 @@ Currently uses React hooks (no Zustand integration yet despite package.json):
 - Responsive design with Tailwind breakpoints
 - Gradient backgrounds: `from-blue-50 to-white dark:from-gray-900 dark:to-gray-800`
 
+## Implemented Features
+
+- ✅ MongoDB/Mongoose database integration (fully connected and active)
+- ✅ NextAuth.js authentication (email/password + Google OAuth)
+- ✅ Email verification system (SMTP with Nodemailer)
+- ✅ Role-based access control (user/admin)
+- ✅ Admin dashboard (users, rooms, statistics) - fully internationalized
+- ✅ Custom i18n system (6 languages, database persistence for auth users)
+- ✅ User settings sync (keyboard layout, language preference to database)
+- ✅ Multiplayer features with leaderboard
+- ✅ 5 fully implemented keyboard layouts: QWERTY, Dvorak, Colemak, AZERTY, QWERTZ
+
 ## Future Development Notes
 
 The codebase is prepared for but hasn't implemented:
-- MongoDB/Mongoose database integration (models defined, not connected)
-- NextAuth.js authentication (configured, not implemented)
-- Redis caching (dependency installed, not used)
-- i18next internationalization (dependencies ready, not integrated)
+- Redis caching (dependency installed, not yet actively used)
 - Zustand state management (package installed, currently using React hooks)
-- Some keyboard layout mappings (4 fully implemented: QWERTY, Dvorak, Colemak, AZERTY, QWERTZ; 6 fallback to QWERTY: UK QWERTY, Workman, Programmer Dvorak, Spanish layouts)
+- Some keyboard layout mappings (6 fallback to QWERTY: UK QWERTY, Workman, Programmer Dvorak, Spanish layouts)
 
 *** do not commit and push until user requested everytime.

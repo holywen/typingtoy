@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import UserTable from '@/components/admin/UserTable';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface User {
   _id: string;
@@ -22,6 +23,7 @@ interface Pagination {
 
 export default function UsersPage() {
   const { data: session } = useSession();
+  const { t } = useLanguage();
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -117,9 +119,9 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">User Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t.admin.userManagement}</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Manage all registered users on your platform
+          {t.admin.manageUsersDescription}
         </p>
       </div>
 
@@ -130,7 +132,7 @@ export default function UsersPage() {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Search by email or name..."
+                placeholder={t.admin.searchUsers}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -139,7 +141,7 @@ export default function UsersPage() {
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
               >
-                Search
+                {t.admin.search}
               </button>
             </div>
           </form>
@@ -149,9 +151,9 @@ export default function UsersPage() {
             onChange={(e) => setRoleFilter(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">All Roles</option>
-            <option value="user">Users</option>
-            <option value="admin">Admins</option>
+            <option value="">{t.admin.allRoles}</option>
+            <option value="user">{t.admin.user}s</option>
+            <option value="admin">{t.admin.admin}s</option>
           </select>
         </div>
       </div>
@@ -161,11 +163,11 @@ export default function UsersPage() {
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading users...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">{t.admin.loadingUsers}</p>
           </div>
         ) : users.length === 0 ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            No users found
+            {t.admin.noUsersFound}
           </div>
         ) : (
           <>
@@ -181,7 +183,11 @@ export default function UsersPage() {
               <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700 dark:text-gray-300">
-                    Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total users)
+                    {t.admin.showingPage
+                      .replace('{page}', pagination.page.toString())
+                      .replace('{totalPages}', pagination.totalPages.toString())
+                      .replace('{total}', pagination.total.toString())
+                      .replace('{type}', t.admin.users.toLowerCase())}
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -189,14 +195,14 @@ export default function UsersPage() {
                       disabled={pagination.page === 1}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Previous
+                      {t.admin.previous}
                     </button>
                     <button
                       onClick={() => fetchUsers(pagination.page + 1)}
                       disabled={pagination.page === pagination.totalPages}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Next
+                      {t.admin.next}
                     </button>
                   </div>
                 </div>

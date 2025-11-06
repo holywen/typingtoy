@@ -17,6 +17,7 @@ import {
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import ChartCard from '@/components/admin/ChartCard';
 import StatsCard from '@/components/admin/StatsCard';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 // Register ChartJS components
 ChartJS.register(
@@ -62,6 +63,7 @@ interface StatisticsData {
 }
 
 export default function StatisticsPage() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<StatisticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState(30);
@@ -99,7 +101,7 @@ export default function StatisticsPage() {
   if (!stats) {
     return (
       <div className="text-center py-12 text-gray-600 dark:text-gray-400">
-        Failed to load statistics
+        {t.admin.operationFailed}
       </div>
     );
   }
@@ -109,7 +111,7 @@ export default function StatisticsPage() {
     labels: stats.userGrowth.map((item) => item._id),
     datasets: [
       {
-        label: 'New Users',
+        label: t.admin.userGrowth,
         data: stats.userGrowth.map((item) => item.count),
         borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -124,7 +126,7 @@ export default function StatisticsPage() {
     labels: stats.dailyRoomCreation.map((item) => item._id),
     datasets: [
       {
-        label: 'Rooms Created',
+        label: t.admin.rooms,
         data: stats.dailyRoomCreation.map((item) => item.count),
         borderColor: 'rgb(16, 185, 129)',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -145,10 +147,10 @@ export default function StatisticsPage() {
   const gameTypeChartData = {
     labels: stats.gameTypeDistribution.map((item) => {
       const labels: Record<string, string> = {
-        'falling-blocks': 'Falling Blocks',
-        'blink': 'Blink',
-        'typing-walk': 'Typing Walk',
-        'falling-words': 'Falling Words',
+        'falling-blocks': t.games.fallingBlocks.name,
+        'blink': t.games.blink.name,
+        'typing-walk': t.games.typingWalk.name,
+        'falling-words': t.games.fallingWords.name,
       };
       return labels[item._id] || item._id;
     }),
@@ -167,7 +169,7 @@ export default function StatisticsPage() {
     labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
     datasets: [
       {
-        label: 'Rooms Created',
+        label: t.admin.rooms,
         data: Array.from({ length: 24 }, (_, hour) => {
           const hourData = stats.peakHours.find((item) => item._id === hour);
           return hourData ? hourData.count : 0;
@@ -251,10 +253,10 @@ export default function StatisticsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Statistics & Analytics
+            {t.admin.statisticsOverview}
           </h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Platform insights and performance metrics
+            {t.admin.platformInsights}
           </p>
         </div>
         <select
@@ -262,35 +264,35 @@ export default function StatisticsPage() {
           onChange={(e) => setDateRange(parseInt(e.target.value))}
           className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-          <option value="90">Last 90 days</option>
+          <option value="7">{t.admin.last7Days}</option>
+          <option value="30">{t.admin.last30Days}</option>
+          <option value="90">{t.admin.last90Days}</option>
         </select>
       </div>
 
       {/* Recent Activity Summary */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-          Recent Activity
+          {t.admin.recentActivity}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Last 24 Hours
+              {t.admin.last24Hours}
             </h3>
             <div className="grid grid-cols-1 gap-4">
               <StatsCard
-                title="New Users"
+                title={t.admin.users}
                 value={stats.recentActivitySummary.last24Hours.newUsers}
                 icon="👤"
               />
               <StatsCard
-                title="New Rooms"
+                title={t.admin.rooms}
                 value={stats.recentActivitySummary.last24Hours.newRooms}
                 icon="🎮"
               />
               <StatsCard
-                title="Finished Games"
+                title={t.admin.totalGames}
                 value={stats.recentActivitySummary.last24Hours.finishedGames}
                 icon="✅"
               />
@@ -299,21 +301,21 @@ export default function StatisticsPage() {
 
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Last 7 Days
+              {t.admin.lastSevenDays}
             </h3>
             <div className="grid grid-cols-1 gap-4">
               <StatsCard
-                title="New Users"
+                title={t.admin.users}
                 value={stats.recentActivitySummary.last7Days.newUsers}
                 icon="👤"
               />
               <StatsCard
-                title="New Rooms"
+                title={t.admin.rooms}
                 value={stats.recentActivitySummary.last7Days.newRooms}
                 icon="🎮"
               />
               <StatsCard
-                title="Finished Games"
+                title={t.admin.totalGames}
                 value={stats.recentActivitySummary.last7Days.finishedGames}
                 icon="✅"
               />
@@ -322,7 +324,7 @@ export default function StatisticsPage() {
 
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Average Game Duration
+              {t.admin.avgGameDuration}
             </h3>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
               {stats.avgGameDuration.length > 0 ? (
@@ -343,7 +345,7 @@ export default function StatisticsPage() {
                 </ul>
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No finished games yet
+                  {t.admin.noFinishedGames}
                 </p>
               )}
             </div>
@@ -354,8 +356,8 @@ export default function StatisticsPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard
-          title="User Growth"
-          description={`New user registrations over the last ${dateRange} days`}
+          title={t.admin.userGrowthChart}
+          description={t.admin.newUserRegistrations.replace('{days}', dateRange.toString())}
         >
           <div className="h-64">
             <Line data={userGrowthChartData} options={lineChartOptions} />
@@ -363,8 +365,8 @@ export default function StatisticsPage() {
         </ChartCard>
 
         <ChartCard
-          title="Daily Room Creation"
-          description={`Rooms created per day over the last ${dateRange} days`}
+          title={t.admin.dailyRoomCreationChart}
+          description={t.admin.roomsCreatedPerDay.replace('{days}', dateRange.toString())}
         >
           <div className="h-64">
             <Line data={dailyRoomChartData} options={lineChartOptions} />
@@ -372,8 +374,8 @@ export default function StatisticsPage() {
         </ChartCard>
 
         <ChartCard
-          title="Game Type Popularity"
-          description="Distribution of games by type"
+          title={t.admin.gameTypePopularity}
+          description={t.admin.distributionByType}
         >
           <div className="h-64">
             <Doughnut data={gameTypeChartData} options={doughnutOptions} />
@@ -381,8 +383,8 @@ export default function StatisticsPage() {
         </ChartCard>
 
         <ChartCard
-          title="Room Status Distribution"
-          description="Current status of all rooms"
+          title={t.admin.roomStatusDistribution}
+          description={t.admin.currentRoomStatus}
         >
           <div className="h-64">
             <Doughnut data={roomStatusChartData} options={doughnutOptions} />
@@ -390,8 +392,8 @@ export default function StatisticsPage() {
         </ChartCard>
 
         <ChartCard
-          title="Peak Usage Hours"
-          description="Room creation activity by hour of day"
+          title={t.admin.peakUsageHours}
+          description={t.admin.roomCreationByHour}
           className="lg:col-span-2"
         >
           <div className="h-64">
@@ -404,7 +406,7 @@ export default function StatisticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Average Players per Game
+            {t.admin.avgPlayersPerGame}
           </h3>
           {stats.avgPlayersByGameType.length > 0 ? (
             <div className="space-y-3">
@@ -418,7 +420,7 @@ export default function StatisticsPage() {
                       {item._id.replace(/-/g, ' ')}
                     </span>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {item.totalGames} total games
+                      {item.totalGames} {t.admin.totalGamesPlayed}
                     </p>
                   </div>
                   <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -429,19 +431,19 @@ export default function StatisticsPage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No finished games yet
+              {t.admin.noFinishedGames}
             </p>
           )}
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            User Statistics
+            {t.admin.userStatistics}
           </h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-900 dark:text-white">
-                Total Users
+                {t.admin.totalUsersLabel}
               </span>
               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
                 {stats.userRoleDistribution.reduce((sum, item) => sum + item.count, 0)}

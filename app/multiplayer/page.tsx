@@ -6,8 +6,10 @@ import { useSession } from 'next-auth/react';
 import { getDeviceIdentity } from '@/lib/services/deviceId';
 import { initSocketClient, getSocket, disconnectSocket } from '@/lib/services/socketClient';
 import GameLobby from '@/components/lobby/GameLobby';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function MultiplayerPage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const { data: session, status } = useSession();
   const [isConnecting, setIsConnecting] = useState(true);
@@ -145,7 +147,7 @@ export default function MultiplayerPage() {
             onClick={() => router.push('/')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Back to Home
+            {t.common.backToHome}
           </button>
         </div>
       </div>
@@ -163,7 +165,7 @@ export default function MultiplayerPage() {
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Home
+            {t.common.backToHome}
           </button>
         </div>
 

@@ -10,6 +10,7 @@ import QuickMatchButton from './QuickMatchButton';
 import ChatBox from './ChatBox';
 import OnlinePlayerList from './OnlinePlayerList';
 import { Trophy } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface GameLobbyProps {
   deviceIdentity: any;
@@ -18,6 +19,7 @@ interface GameLobbyProps {
 
 export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const displayName = getPlayerDisplayName(session?.user, deviceIdentity);
   const [selectedGameType, setSelectedGameType] = useState<GameType>('falling-blocks');
   const [showCreateRoom, setShowCreateRoom] = useState(false);
@@ -25,23 +27,23 @@ export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
   const gameTypes: { value: GameType; label: string; description: string }[] = [
     {
       value: 'falling-blocks',
-      label: 'Falling Blocks',
-      description: 'Type letters before they hit the ground',
+      label: t.multiplayer.gameTypes.fallingBlocks,
+      description: t.games.fallingBlocks.description,
     },
     {
       value: 'blink',
-      label: 'Blink',
-      description: 'Type the displayed character quickly',
+      label: t.multiplayer.gameTypes.blink,
+      description: t.games.blink.description,
     },
     {
       value: 'typing-walk',
-      label: 'Typing Walk',
-      description: 'Navigate the grid by typing correctly',
+      label: t.multiplayer.gameTypes.typingWalk,
+      description: t.games.typingWalk.description,
     },
     {
       value: 'falling-words',
-      label: 'Falling Words',
-      description: 'Complete words before they fall',
+      label: t.multiplayer.gameTypes.fallingWords,
+      description: t.games.fallingWords.description,
     },
   ];
 
@@ -52,10 +54,10 @@ export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              Multiplayer Lobby
+              {t.multiplayer.title}
             </h1>
             <p className="text-gray-600 dark:text-gray-300 mt-1">
-              Playing as: <span className="font-semibold">{displayName}</span>
+              {t.multiplayer.players}: <span className="font-semibold">{displayName}</span>
             </p>
           </div>
           <button
@@ -63,7 +65,7 @@ export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl font-semibold"
           >
             <Trophy className="w-5 h-5" />
-            Leaderboard
+            {t.multiplayer.leaderboard}
           </button>
         </div>
 
@@ -104,7 +106,7 @@ export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Create Room
+                {t.multiplayer.createRoom}
               </button>
 
               <QuickMatchButton

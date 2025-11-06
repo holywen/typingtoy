@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import StatsCard from '@/components/admin/StatsCard';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface Stats {
   totalUsers: number;
@@ -16,6 +17,7 @@ interface Stats {
 }
 
 export default function AdminDashboard() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,90 +48,90 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t.admin.dashboard}</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Overview of your Typing Toy platform
+          {t.admin.overviewPlatform}
         </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
-          title="Total Users"
+          title={t.admin.totalUsers}
           value={stats?.totalUsers || 0}
           icon="👥"
-          description={`${stats?.recentUsers || 0} new in last 7 days`}
+          description={`${stats?.recentUsers || 0} ${t.admin.newInLast7Days}`}
           link="/admin/users"
         />
         <StatsCard
-          title="Total Rooms"
+          title={t.admin.totalRooms}
           value={stats?.totalRooms || 0}
           icon="🎮"
-          description={`${stats?.recentRooms || 0} created today`}
+          description={`${stats?.recentRooms || 0} ${t.admin.createdToday}`}
           link="/admin/rooms"
         />
         <StatsCard
-          title="Active Rooms"
+          title={t.admin.activeRooms}
           value={stats?.activeRooms || 0}
           icon="⚡"
-          description="Waiting for players"
+          description={t.admin.waitingForPlayers}
         />
         <StatsCard
-          title="Playing Now"
+          title={t.admin.playingNow}
           value={stats?.playingRooms || 0}
           icon="🎯"
-          description="Games in progress"
+          description={t.admin.gamesInProgress}
         />
         <StatsCard
-          title="Online Users"
+          title={t.admin.onlineUsers}
           value={stats?.onlineUsers || 0}
           icon="🟢"
-          description="Currently active"
+          description={t.admin.currentlyActive}
         />
         <StatsCard
-          title="Finished Rooms"
+          title={t.admin.finishedRooms}
           value={stats?.finishedRooms || 0}
           icon="✅"
-          description="Completed games"
+          description={t.admin.completedGames}
         />
         <StatsCard
-          title="Administrators"
+          title={t.admin.administrators}
           value={stats?.adminCount || 0}
           icon="🔐"
-          description="Admin accounts"
+          description={t.admin.adminAccounts}
         />
         <StatsCard
-          title="New Users (7d)"
+          title={t.admin.newUsers7d}
           value={stats?.recentUsers || 0}
           icon="📈"
-          description="Recent signups"
+          description={t.admin.recentSignups}
         />
       </div>
 
       {/* Quick Actions */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t.admin.quickActions}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <a
             href="/admin/users"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <span className="mr-2">👥</span>
-            Manage Users
+            {t.admin.manageUsers}
           </a>
           <a
             href="/admin/rooms"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <span className="mr-2">🎮</span>
-            Manage Rooms
+            {t.admin.manageRooms}
           </a>
           <a
             href="/admin/statistics"
             className="flex items-center justify-center px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             <span className="mr-2">📈</span>
-            View Statistics
+            {t.admin.viewStatistics}
           </a>
         </div>
       </div>

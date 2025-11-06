@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import RoomTable from '@/components/admin/RoomTable';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface PlayerInRoom {
   playerId: string;
@@ -33,6 +34,7 @@ interface Pagination {
 }
 
 export default function RoomsPage() {
+  const { t } = useLanguage();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -91,11 +93,11 @@ export default function RoomsPage() {
         // Update local state
         setRooms(rooms.map(r => r._id === roomId ? { ...r, ...updates } : r));
       } else {
-        alert(`Error: ${data.error}`);
+        alert(`${t.admin.operationFailed}: ${data.error}`);
       }
     } catch (error) {
       console.error('Error updating room:', error);
-      alert('Failed to update room');
+      alert(t.admin.operationFailed);
     }
   };
 
@@ -111,20 +113,20 @@ export default function RoomsPage() {
         // Remove from local state
         setRooms(rooms.filter(r => r._id !== roomId));
       } else {
-        alert(`Error: ${data.error}`);
+        alert(`${t.admin.operationFailed}: ${data.error}`);
       }
     } catch (error) {
       console.error('Error deleting room:', error);
-      alert('Failed to delete room');
+      alert(t.admin.operationFailed);
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Room Management</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{t.admin.roomManagement}</h1>
         <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Manage all game rooms on your platform
+          {t.admin.manageRoomsDescription}
         </p>
       </div>
 
@@ -136,10 +138,10 @@ export default function RoomsPage() {
             onChange={(e) => setStatusFilter(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">All Status</option>
-            <option value="waiting">Waiting</option>
-            <option value="playing">Playing</option>
-            <option value="finished">Finished</option>
+            <option value="">{t.admin.allStatus}</option>
+            <option value="waiting">{t.multiplayer.waiting}</option>
+            <option value="playing">{t.admin.playing}</option>
+            <option value="finished">{t.admin.finished}</option>
           </select>
 
           <select
@@ -147,11 +149,11 @@ export default function RoomsPage() {
             onChange={(e) => setGameTypeFilter(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="">All Game Types</option>
-            <option value="falling-blocks">Falling Blocks</option>
-            <option value="blink">Blink</option>
-            <option value="typing-walk">Typing Walk</option>
-            <option value="falling-words">Falling Words</option>
+            <option value="">{t.admin.allGameTypes}</option>
+            <option value="falling-blocks">{t.multiplayer.gameTypes.fallingBlocks}</option>
+            <option value="blink">{t.multiplayer.gameTypes.blink}</option>
+            <option value="typing-walk">{t.multiplayer.gameTypes.typingWalk}</option>
+            <option value="falling-words">{t.multiplayer.gameTypes.fallingWords}</option>
           </select>
 
           <button
@@ -161,7 +163,7 @@ export default function RoomsPage() {
             }}
             className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
           >
-            Clear Filters
+            {t.admin.clearFilters}
           </button>
         </div>
       </div>
@@ -171,11 +173,11 @@ export default function RoomsPage() {
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading rooms...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">{t.admin.loadingRooms}</p>
           </div>
         ) : rooms.length === 0 ? (
           <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-            No rooms found
+            {t.multiplayer.noRooms}
           </div>
         ) : (
           <>
@@ -190,7 +192,11 @@ export default function RoomsPage() {
               <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700 dark:text-gray-300">
-                    Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total rooms)
+                    {t.admin.showingPage
+                      .replace('{page}', pagination.page.toString())
+                      .replace('{totalPages}', pagination.totalPages.toString())
+                      .replace('{total}', pagination.total.toString())
+                      .replace('{type}', t.admin.rooms.toLowerCase())}
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -198,14 +204,14 @@ export default function RoomsPage() {
                       disabled={pagination.page === 1}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Previous
+                      {t.admin.previous}
                     </button>
                     <button
                       onClick={() => fetchRooms(pagination.page + 1)}
                       disabled={pagination.page === pagination.totalPages}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      Next
+                      {t.admin.next}
                     </button>
                   </div>
                 </div>

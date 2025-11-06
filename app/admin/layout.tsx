@@ -5,8 +5,10 @@ import { useSession } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Head from 'next/head';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useLanguage();
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -44,10 +46,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const navigation = [
-    { name: 'Dashboard', href: '/admin', icon: '📊' },
-    { name: 'Users', href: '/admin/users', icon: '👥' },
-    { name: 'Rooms', href: '/admin/rooms', icon: '🎮' },
-    { name: 'Statistics', href: '/admin/statistics', icon: '📈' },
+    { name: t.admin.dashboard, href: '/admin', icon: '📊' },
+    { name: t.admin.users, href: '/admin/users', icon: '👥' },
+    { name: t.admin.rooms, href: '/admin/rooms', icon: '🎮' },
+    { name: t.admin.statistics, href: '/admin/statistics', icon: '📈' },
   ];
 
   return (
@@ -77,7 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href="/"
                 className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
               >
-                Exit Admin
+                {t.admin.exitAdmin}
               </Link>
             </div>
           </div>

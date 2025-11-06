@@ -11,9 +11,11 @@ import MultiplayerFallingBlocks from '@/components/multiplayer/MultiplayerFallin
 import MultiplayerBlink from '@/components/multiplayer/MultiplayerBlink';
 import MultiplayerSpeedRace from '@/components/multiplayer/MultiplayerSpeedRace';
 import MultiplayerFallingWords from '@/components/multiplayer/MultiplayerFallingWords';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
+  const { t } = useLanguage();
   const router = useRouter();
   const { data: session, status } = useSession();
   const [room, setRoom] = useState<GameRoom | null>(null);
@@ -279,7 +281,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             onClick={() => router.push('/multiplayer')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Back to Lobby
+            {t.multiplayer.backToLobby}
           </button>
         </div>
       </div>
@@ -369,7 +371,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
               <div className="text-9xl font-bold text-white mb-4 animate-pulse">
                 {countdown}
               </div>
-              <p className="text-2xl text-white">Game starting...</p>
+              <p className="text-2xl text-white">{t.multiplayer.startGame}...</p>
             </div>
           </div>
         )}
@@ -383,7 +385,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Leave Room
+            {t.multiplayer.leave}
           </button>
         </div>
 
@@ -404,7 +406,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                     {room?.roomName}
                   </h1>
                   <p className="text-gray-600 dark:text-gray-300 mt-1">
-                    Game: <span className="font-semibold capitalize">{room?.gameType.replace('-', ' ')}</span>
+                    {t.multiplayer.gameType}: <span className="font-semibold capitalize">{room?.gameType.replace('-', ' ')}</span>
                   </p>
                 </div>
                 {room?.password && (
@@ -422,7 +424,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
-                  {room?.players.length}/{room?.maxPlayers} Players
+                  {room?.players.length}/{room?.maxPlayers} {t.multiplayer.players}
                 </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                   room?.status === 'waiting'
@@ -438,7 +440,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
             {/* Players List */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Players</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">{t.multiplayer.players}</h2>
               <div className="space-y-3">
                 {room?.players.map((player) => (
                   <div
@@ -453,19 +455,19 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                         <div className="flex items-center gap-2">
                           <p className="font-semibold text-gray-900 dark:text-white">
                             {player.displayName}
-                            {player.playerId === playerId && ' (You)'}
+                            {player.playerId === playerId && ` (${t.multiplayer.you})`}
                           </p>
                           {player.isHost && (
                             <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-medium rounded">
-                              HOST
+                              {t.multiplayer.host.toUpperCase()}
                             </span>
                           )}
                         </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {player.isReady ? (
-                            <span className="text-green-600 dark:text-green-400 font-medium">Ready</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">{t.multiplayer.ready}</span>
                           ) : (
-                            <span className="text-yellow-600 dark:text-yellow-400">Not Ready</span>
+                            <span className="text-yellow-600 dark:text-yellow-400">{t.multiplayer.notReady}</span>
                           )}
                         </p>
                       </div>
@@ -476,7 +478,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                         onClick={() => handleKickPlayer(player.playerId)}
                         className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                       >
-                        Kick
+                        {t.multiplayer.kickPlayer}
                       </button>
                     )}
                   </div>
@@ -496,7 +498,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                       : 'bg-green-600 text-white hover:bg-green-700'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {currentPlayer?.isReady ? 'Not Ready' : 'Ready'}
+                  {currentPlayer?.isReady ? t.multiplayer.notReady : t.multiplayer.ready}
                 </button>
 
                 {isHost && (
@@ -506,10 +508,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
                     className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed"
                   >
                     {!allNonHostReady
-                      ? 'Waiting for players...'
+                      ? t.multiplayer.waitingForPlayers
                       : (room?.players.length || 0) < 2
                       ? 'Need 2+ players'
-                      : 'Start Game'}
+                      : t.multiplayer.startGame}
                   </button>
                 )}
               </div>

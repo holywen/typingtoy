@@ -135,7 +135,8 @@ typingtoy/
 │   │   ├── generate-text/           # Text generation API
 │   │   │   └── route.ts             # Random text endpoint
 │   │   └── user/                    # User data APIs
-│   │       └── sync/                # Progress sync
+│   │       ├── sync/                # Progress sync
+│   │       └── settings/            # User settings (GET/PATCH)
 │   │
 │   ├── admin/                       # Admin dashboard (role-protected)
 │   │   ├── layout.tsx               # Admin layout with role check
@@ -193,7 +194,7 @@ typingtoy/
 │   ├── db/                          # Database layer
 │   │   ├── mongodb.ts               # MongoDB connection
 │   │   └── models/                  # Mongoose models
-│   │       ├── User.ts              # User schema with role field
+│   │       ├── User.ts              # User schema with role and settings (including language)
 │   │       └── VerificationToken.ts # Email verification tokens
 │   │
 │   ├── admin.ts                     # Admin helper functions
@@ -201,14 +202,14 @@ typingtoy/
 │   │
 │   ├── i18n/                        # Internationalization
 │   │   ├── index.ts                 # i18n configuration
-│   │   ├── LanguageContext.tsx      # React Context provider
-│   │   └── locales/                 # Translation files
-│   │       ├── en.ts                # English
-│   │       ├── zh.ts                # Chinese (中文)
-│   │       ├── ja.ts                # Japanese (日本語)
-│   │       ├── es.ts                # Spanish (Español)
-│   │       ├── fr.ts                # French (Français)
-│   │       └── th.ts                # Thai (ไทย)
+│   │   ├── LanguageContext.tsx      # React Context with DB sync for auth users
+│   │   └── locales/                 # Translation files (68+ keys per language)
+│   │       ├── en.ts                # English (includes admin translations)
+│   │       ├── zh.ts                # Chinese (中文, includes admin translations)
+│   │       ├── ja.ts                # Japanese (日本語, includes admin translations)
+│   │       ├── es.ts                # Spanish (Español, includes admin translations)
+│   │       ├── fr.ts                # French (Français, includes admin translations)
+│   │       └── th.ts                # Thai (ไทย, includes admin translations)
 │   │
 │   ├── services/                    # Business logic
 │   │   ├── typingMetrics.ts         # WPM/accuracy calculations
@@ -359,8 +360,9 @@ Promotional banner for unregistered users:
 - Redirects unauthenticated users to sign-in
 - Redirects non-admin users to home page
 - Includes navigation sidebar and header
+- Fully internationalized with i18n support
 
-**Dashboard Pages**:
+**Dashboard Pages** (All fully translated in 6 languages):
 1. **Dashboard** (`app/admin/page.tsx`) - Overview with key metrics
 2. **Users** (`app/admin/users/page.tsx`) - User management with search/filter
 3. **Rooms** (`app/admin/rooms/page.tsx`) - Multiplayer room monitoring
@@ -536,18 +538,40 @@ Redirect to home
 
 ### 4. i18n Flow
 
+**Language Selection**:
 ```
 User selects language
     ↓
 LanguageContext.setLanguage()
     ↓
-Update localStorage
+Update localStorage (immediate persistence)
+    ↓
+If authenticated:
+    → POST to /api/user/settings (save to database)
     ↓
 Load translation file (e.g., th.ts)
     ↓
 Re-render all components
     ↓
 Display translated text
+```
+
+**Language Loading on Page Load**:
+```
+LanguageContext initializes
+    ↓
+Check NextAuth session status
+    ↓
+If authenticated:
+    → Fetch language from database (GET /api/user/settings)
+    → If successful, use database language
+    ↓
+If unauthenticated or fetch fails:
+    → Load language from localStorage
+    ↓
+Apply translation file
+    ↓
+Render UI with selected language
 ```
 
 ### 5. Admin Dashboard Flow
@@ -673,6 +697,16 @@ Syncs local progress to cloud:
 - Merges local + cloud data
 - Returns updated progress
 
+### 10. User Settings
+**Route**: `/api/user/settings`
+
+Manages user settings (keyboard layout, language, etc.):
+- **GET**: Retrieve user settings from database
+- **PATCH**: Update user settings (partial update)
+- Requires authentication
+- Syncs language preference to database for authenticated users
+- Returns updated settings
+
 ## State Management Strategy
 
 ### Local State (React Hooks)
@@ -691,10 +725,12 @@ Syncs local progress to cloud:
 - Progress data (lessons, tests)
 - Last position (lesson, exercise)
 - Typing history
+- Fallback for unauthenticated users
 
 ### Server State (MongoDB)
-- User accounts
+- User accounts with settings (keyboard layout, language, sound)
 - Authenticated user progress
+- Language preference (synced across devices)
 - Achievement data (future)
 - Leaderboard data (future)
 
@@ -756,16 +792,20 @@ Unlike using heavy libraries like i18next, we built a lightweight custom system:
 **Advantages**:
 - Type-safe translations
 - No bundle bloat
-- React Context integration
+- React Context integration with NextAuth
 - Simple API (`t.home.title`)
 - Easy to maintain
+- Database persistence for authenticated users
+- LocalStorage fallback for unauthenticated users
+- Cross-device language sync for authenticated users
 
 **Structure**:
 ```typescript
 // Each locale file (e.g., en.ts)
 export default {
-  common: { home: 'Home', ... },
+  common: { home: 'Home', backToHome: 'Back to Home', ... },
   lessons: { title: 'Lessons', ... },
+  admin: { dashboard: 'Dashboard', users: 'Users', ... }, // 68+ admin keys
   // ...
 } as const;
 
@@ -777,7 +817,32 @@ export type Translation = typeof en;
 ```tsx
 const { t } = useLanguage();
 <h1>{t.home.title}</h1>
+<button>{t.common.backToHome}</button>
+<h2>{t.admin.dashboard}</h2>
 ```
+
+**Language Persistence**:
+- **Authenticated Users**: Language preference saved to User model in MongoDB
+- **Unauthenticated Users**: Language preference saved to localStorage only
+- **Loading Priority**: Database → localStorage → Default ('en')
+- **Saving Strategy**: Always save to localStorage for immediate effect, also save to database if authenticated
+
+**Supported Languages** (6 total):
+1. English (en) - Default
+2. Chinese (zh) - 中文
+3. Spanish (es) - Español
+4. French (fr) - Français
+5. Japanese (ja) - 日本語
+6. Thai (th) - ไทย
+
+**Translation Coverage**:
+- Common UI elements
+- Lessons and exercises
+- Progress tracking
+- Admin dashboard (68+ keys per language)
+- User settings
+- Authentication pages
+- Error messages
 
 ## Docker Architecture
 
@@ -935,7 +1000,7 @@ docker compose up -d
 ---
 
 **Last Updated**: January 2025
-**Version**: 2.1
+**Version**: 2.2
 **Next.js**: 16.0.1
 **React**: 19.2.0
-**Major Features**: Admin Dashboard, Email Verification, Role-Based Access Control
+**Major Features**: Admin Dashboard, Email Verification, Role-Based Access Control, Full i18n with Database Persistence

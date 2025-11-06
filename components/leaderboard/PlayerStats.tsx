@@ -14,6 +14,7 @@ import {
   BarChart3,
   RefreshCw,
 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface PlayerStatsProps {
   playerId: string;
@@ -37,6 +38,7 @@ interface PlayerRanking {
 }
 
 export default function PlayerStats({ playerId }: PlayerStatsProps) {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<LeaderboardStats | null>(null);
   const [rankings, setRankings] = useState<{
     gameType: GameType;
@@ -91,13 +93,13 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
         <div className="text-center py-12">
           <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-400" />
           <p className="text-gray-600 dark:text-gray-400">
-            {error || 'No statistics available'}
+            {error || t.leaderboard.noEntries}
           </p>
           <button
             onClick={fetchPlayerStats}
             className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Retry
+            {t.leaderboard.refresh}
           </button>
         </div>
       </div>
@@ -105,18 +107,18 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
   }
 
   const gameTypeLabels: Record<GameType, string> = {
-    'falling-blocks': 'Falling Blocks',
-    'blink': 'Blink',
-    'falling-words': 'Falling Words',
-    'speed-race': 'Speed Race',
-    'typing-walk': 'Typing Walk',
+    'falling-blocks': t.multiplayer.gameTypes.fallingBlocks,
+    'blink': t.multiplayer.gameTypes.blink,
+    'falling-words': t.multiplayer.gameTypes.fallingWords,
+    'speed-race': t.multiplayer.gameTypes.speedRace,
+    'typing-walk': t.multiplayer.gameTypes.typingWalk,
   };
 
   const periodLabels: Record<LeaderboardPeriod, string> = {
-    'all-time': 'All Time',
-    'daily': 'Today',
-    'weekly': 'This Week',
-    'monthly': 'This Month',
+    'all-time': t.leaderboard.periods.allTime,
+    'daily': t.leaderboard.periods.daily,
+    'weekly': t.leaderboard.periods.weekly,
+    'monthly': t.leaderboard.periods.monthly,
   };
 
   // Get best rankings for display
@@ -131,7 +133,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
       <div className="border-b border-gray-200 dark:border-gray-700 p-6">
         <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <BarChart3 className="w-6 h-6" />
-          Player Statistics
+          {t.leaderboard.myStats}
         </h3>
       </div>
 
@@ -141,22 +143,22 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <StatCard
             icon={<Trophy className="w-6 h-6 text-yellow-500" />}
-            label="Total Games"
+            label={t.leaderboard.stats.totalGames}
             value={stats.totalGames.toLocaleString()}
           />
           <StatCard
             icon={<Award className="w-6 h-6 text-green-500" />}
-            label="Total Wins"
+            label={t.leaderboard.stats.totalWins}
             value={stats.totalWins.toLocaleString()}
           />
           <StatCard
             icon={<Zap className="w-6 h-6 text-blue-500" />}
-            label="Avg WPM"
+            label={t.leaderboard.stats.avgWPM}
             value={stats.avgWPM.toString()}
           />
           <StatCard
             icon={<Target className="w-6 h-6 text-purple-500" />}
-            label="Avg Accuracy"
+            label={t.leaderboard.stats.avgAccuracy}
             value={`${stats.avgAccuracy}%`}
           />
         </div>
@@ -165,7 +167,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
         <div className="mb-8 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Best Score</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{t.leaderboard.stats.bestScore}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white">
                 {stats.bestScore.toLocaleString()}
               </p>
@@ -174,7 +176,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
           </div>
           {stats.favoriteGame && (
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Favorite Game: <span className="font-semibold">{gameTypeLabels[stats.favoriteGame]}</span>
+              {t.leaderboard.stats.favoriteGame}: <span className="font-semibold">{gameTypeLabels[stats.favoriteGame]}</span>
             </p>
           )}
         </div>
@@ -184,7 +186,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
           <div className="mb-8">
             <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              Best Rankings
+              {t.leaderboard.stats.topRankings}
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {bestRankings.map((r) => (
@@ -217,7 +219,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
         {/* Games Per Type */}
         <div className="mb-8">
           <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Games Played by Type
+            {t.leaderboard.stats.gamesPlayed}
           </h4>
           <div className="space-y-3">
             {(Object.entries(stats.gamesPerType) as [GameType, number][]).map(([gameType, count]) => (
@@ -243,7 +245,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
         {/* Skill Ratings */}
         <div>
           <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Skill Ratings
+            {t.leaderboard.stats.skillRatings}
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {(Object.entries(stats.skillRatings) as [GameType, number][]).map(([gameType, rating]) => (
