@@ -9,6 +9,7 @@ import { FallingWordsMultiplayer } from '@/lib/game-engine/FallingWordsMultiplay
 import { BaseMultiplayerGame } from '@/lib/game-engine/BaseMultiplayerGame';
 import type { PlayerInput } from '@/lib/game-engine/PlayerState';
 import { AntiCheatValidator } from '../antiCheat';
+import { saveGameSession } from '../gameSessionService';
 
 // Store active game instances (can be any game type)
 const activeGames = new Map<string, BaseMultiplayerGame>();
@@ -105,12 +106,26 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
         game.stop(); // Stop the game's internal update loop
         const winner = game.getWinner();
         console.log(`🏁 Game ended in room ${roomId}, winner: ${winner}`);
+
+        // Save game session and submit scores to leaderboard
+        saveGameSession(roomId, room.gameType, game.getGameState())
+          .then(result => {
+            console.log(`✅ Game session saved: ${result.sessionId}`);
+            console.log(`✅ ${result.leaderboardEntries.length} leaderboard entries created`);
+          })
+          .catch(error => {
+            console.error('Error saving game session:', error);
+          });
+
         io.to(roomId).emit('game:ended', {
           winner,
           finalState: state,
         });
         activeGames.delete(roomId);
-        // TODO: Update room status back to waiting when implementing game end
+
+        // Update room status back to waiting
+        room.status = 'waiting';
+        RoomManager.updateRoom(room).catch(console.error);
       }
     }, 100);
 
@@ -206,6 +221,18 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
         if (game.isGameOver()) {
           clearInterval(gameLoop);
           const winner = game.getWinner();
+          console.log(`🏁 Game ended in room ${roomId}, winner: ${winner}`);
+
+          // Save game session and submit scores to leaderboard
+          saveGameSession(roomId, room.gameType, game.getGameState())
+            .then(result => {
+              console.log(`✅ Game session saved: ${result.sessionId}`);
+              console.log(`✅ ${result.leaderboardEntries.length} leaderboard entries created`);
+            })
+            .catch(error => {
+              console.error('Error saving game session:', error);
+            });
+
           io.to(roomId).emit('game:ended', {
             winner,
             finalState: state,
