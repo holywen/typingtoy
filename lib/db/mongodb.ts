@@ -52,4 +52,6 @@ async function connectDB() {
   return cached.conn;
 }
 
+// Export both as default and named export for compatibility
 export default connectDB;
+export { connectDB };

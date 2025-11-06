@@ -24,6 +24,16 @@ interface LeaderboardDocument extends mongoose.Document {
   friendIds?: string[];
 }
 
+// Model interface with static methods
+interface LeaderboardModel extends Model<LeaderboardDocument> {
+  getTopPlayers(gameType: string, period: string, limit?: number): Promise<LeaderboardDocument[]>;
+  getPlayerRank(playerId: string, gameType: string, period: string): Promise<{ rank: number; total: number; entry: LeaderboardDocument | null }>;
+  getFriendsLeaderboard(playerId: string, friendIds: string[], gameType: string, period: string): Promise<LeaderboardDocument[]>;
+  submitScore(entry: Partial<LeaderboardEntry>): Promise<LeaderboardDocument>;
+  cleanExpiredPeriods(): Promise<number>;
+  updateRanks(gameType: string, period: string): Promise<void>;
+}
+
 const LeaderboardSchema = new Schema<LeaderboardDocument>(
   {
     gameType: {
@@ -302,9 +312,10 @@ export function getPeriodBoundaries(period: 'daily' | 'weekly' | 'monthly' | 'al
   return { start, end };
 }
 
-// Create or retrieve the model
-const LeaderboardModel: Model<LeaderboardDocument> =
-  mongoose.models.Leaderboard || mongoose.model<LeaderboardDocument>('Leaderboard', LeaderboardSchema);
+// Create or retrieve the model with typed static methods
+const LeaderboardModelInstance: LeaderboardModel =
+  (mongoose.models.Leaderboard as LeaderboardModel) ||
+  mongoose.model<LeaderboardDocument, LeaderboardModel>('Leaderboard', LeaderboardSchema);
 
-export default LeaderboardModel;
-export type { LeaderboardDocument };
+export default LeaderboardModelInstance;
+export type { LeaderboardDocument, LeaderboardModel };

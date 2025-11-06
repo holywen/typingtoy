@@ -35,6 +35,7 @@ interface UserDocument extends mongoose.Document {
       'blink': number;
       'typing-walk': number;
       'falling-words': number;
+      'speed-race': number;
     };
   };
 
@@ -143,6 +144,10 @@ const UserSchema = new Schema<UserDocument>(
           default: 0,
         },
         'falling-words': {
+          type: Number,
+          default: 0,
+        },
+        'speed-race': {
           type: Number,
           default: 0,
         },

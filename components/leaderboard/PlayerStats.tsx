@@ -109,6 +109,7 @@ export default function PlayerStats({ playerId }: PlayerStatsProps) {
     'blink': 'Blink',
     'falling-words': 'Falling Words',
     'speed-race': 'Speed Race',
+    'typing-walk': 'Typing Walk',
   };
 
   const periodLabels: Record<LeaderboardPeriod, string> = {

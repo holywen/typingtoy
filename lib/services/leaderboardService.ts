@@ -116,7 +116,7 @@ export async function getPlayerRank(
 
   return {
     rank: result.rank,
-    entry: result.entry.toObject ? result.entry.toObject() : result.entry,
+    entry: result.entry ? (result.entry.toObject ? result.entry.toObject() : result.entry) : null,
     totalPlayers,
     percentile,
   };
@@ -159,7 +159,7 @@ export async function getPlayerStats(playerId: string): Promise<LeaderboardStats
   }
 
   // Get best scores across all games
-  const gameTypes: GameType[] = ['falling-blocks', 'blink', 'falling-words', 'speed-race'];
+  const gameTypes: GameType[] = ['falling-blocks', 'blink', 'typing-walk', 'falling-words', 'speed-race'];
   const bestScores: Record<GameType, number> = {} as Record<GameType, number>;
   const gamesPerType: Record<GameType, number> = {} as Record<GameType, number>;
 
@@ -212,6 +212,7 @@ export async function getPlayerStats(playerId: string): Promise<LeaderboardStats
       'blink': 0,
       'typing-walk': 0,
       'falling-words': 0,
+      'speed-race': 0,
     },
   };
 }
@@ -323,5 +324,8 @@ export async function getLeaderboardAroundPlayer(
     .sort({ rank: 1 })
     .lean();
 
-  return entries as LeaderboardEntry[];
+  return entries.map(entry => ({
+    ...entry,
+    _id: entry._id.toString(),
+  })) as LeaderboardEntry[];
 }

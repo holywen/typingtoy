@@ -63,7 +63,7 @@ export interface PlayerState {
 export interface GameState {
   roomId: string;
   gameType: GameType;
-  status: 'waiting' | 'countdown' | 'playing' | 'finished';
+  status: 'waiting' | 'countdown' | 'playing' | 'paused' | 'finished';
   startTime: number;
   currentTime: number;
   elapsedTime: number;

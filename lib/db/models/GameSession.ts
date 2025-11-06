@@ -19,6 +19,20 @@ interface GameSessionDocument extends mongoose.Document {
   endedAt: Date;
 }
 
+// Model interface with static methods
+interface GameSessionModel extends Model<GameSessionDocument> {
+  findByPlayerId(playerId: string, gameType?: string, limit?: number): Promise<GameSessionDocument[]>;
+  getPlayerStats(playerId: string, gameType: string): Promise<{
+    totalGames: number;
+    totalWins: number;
+    winRate: number;
+    avgScore: number;
+    avgWPM: number;
+    avgAccuracy: number;
+  } | null>;
+  getRecentSessions(gameType?: string, limit?: number): Promise<GameSessionDocument[]>;
+}
+
 const GameSessionPlayerSchema = new Schema<GameSessionPlayer>({
   playerId: {
     type: String,
@@ -214,9 +228,10 @@ GameSessionSchema.methods.getDuration = function(): number {
   return Math.floor((this.endedAt.getTime() - this.startedAt.getTime()) / 1000);
 };
 
-// Create or retrieve the model
-const GameSessionModel: Model<GameSessionDocument> =
-  mongoose.models.GameSession || mongoose.model<GameSessionDocument>('GameSession', GameSessionSchema);
+// Create or retrieve the model with typed static methods
+const GameSessionModelInstance: GameSessionModel =
+  (mongoose.models.GameSession as GameSessionModel) ||
+  mongoose.model<GameSessionDocument, GameSessionModel>('GameSession', GameSessionSchema);
 
-export default GameSessionModel;
-export type { GameSessionDocument };
+export default GameSessionModelInstance;
+export type { GameSessionDocument, GameSessionModel };
