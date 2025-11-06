@@ -78,10 +78,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await connectDB();
 
         // Check total user count
+        // Note: MongoDBAdapter creates the user before this callback runs,
+        // so we check if userCount <= 1 (the just-created user)
         const userCount = await User.countDocuments();
 
         // If this is the first user, set them as admin and auto-verify email
-        if (userCount === 0) {
+        if (userCount <= 1) {
           // Find the user that was just created by the adapter
           const dbUser = await User.findOne({ email: user.email });
           if (dbUser && dbUser.role !== 'admin') {
