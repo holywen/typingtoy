@@ -1,22 +1,19 @@
 'use client';
 
 // Multiplayer Leaderboard Page
-// Display rankings, friend leaderboards, and player statistics
+// Display rankings and player statistics
 
 import React, { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import LeaderboardPanel from '@/components/leaderboard/LeaderboardPanel';
-import FriendLeaderboard from '@/components/leaderboard/FriendLeaderboard';
 import PlayerStats from '@/components/leaderboard/PlayerStats';
-import type { GameType } from '@/types/multiplayer';
-import { ArrowLeft, Users, BarChart3, Trophy } from 'lucide-react';
+import { ArrowLeft, BarChart3, Trophy } from 'lucide-react';
 
 export default function LeaderboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'global' | 'friends' | 'stats'>('global');
-  const [selectedGame, setSelectedGame] = useState<GameType>('falling-blocks');
+  const [activeTab, setActiveTab] = useState<'global' | 'stats'>('global');
 
   const playerId = session?.user?.id;
 
@@ -28,7 +25,6 @@ export default function LeaderboardPage() {
 
   const tabs = [
     { id: 'global' as const, label: 'Global Rankings', icon: Trophy },
-    { id: 'friends' as const, label: 'Friends', icon: Users, requiresAuth: true },
     { id: 'stats' as const, label: 'My Stats', icon: BarChart3, requiresAuth: true },
   ];
 
@@ -49,7 +45,7 @@ export default function LeaderboardPage() {
             Leaderboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            View rankings, compare with friends, and track your progress
+            View global rankings and track your progress
           </p>
         </div>
 
@@ -93,61 +89,8 @@ export default function LeaderboardPage() {
             />
           )}
 
-          {activeTab === 'friends' && status === 'authenticated' && playerId && (
-            <>
-              {/* Game Type Selector for Friends */}
-              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  Select Game
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { value: 'falling-blocks' as GameType, label: 'Falling Blocks' },
-                    { value: 'blink' as GameType, label: 'Blink' },
-                    { value: 'falling-words' as GameType, label: 'Falling Words' },
-                    { value: 'speed-race' as GameType, label: 'Speed Race' },
-                  ].map((game) => (
-                    <button
-                      key={game.value}
-                      onClick={() => setSelectedGame(game.value)}
-                      className={`
-                        px-4 py-2 rounded-lg font-medium transition-colors
-                        ${selectedGame === game.value
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                        }
-                      `}
-                    >
-                      {game.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <FriendLeaderboard gameType={selectedGame} period="all-time" />
-            </>
-          )}
-
           {activeTab === 'stats' && status === 'authenticated' && playerId && (
             <PlayerStats playerId={playerId} />
-          )}
-
-          {activeTab === 'friends' && status !== 'authenticated' && (
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-12 text-center">
-              <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                Sign In Required
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Sign in to view your friend leaderboard
-              </p>
-              <button
-                onClick={() => router.push('/auth/signin?callbackUrl=/multiplayer/leaderboard')}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Sign In
-              </button>
-            </div>
           )}
 
           {activeTab === 'stats' && status !== 'authenticated' && (
