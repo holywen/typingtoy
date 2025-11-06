@@ -24,6 +24,16 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
 
+      # SMTP Email Configuration (required for email verification)
+      # Gmail example: smtp.gmail.com, port 587, SMTP_SECURE=false
+      # SendGrid: smtp.sendgrid.net, port 587, SMTP_SECURE=false
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@typingtoy.com}
+
       # Redis (required for multiplayer features)
       - REDIS_URL=redis://redis:6379
 

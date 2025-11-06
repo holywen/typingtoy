@@ -14,7 +14,10 @@ A modern, production-ready touch typing practice website built with Next.js 15, 
 - ✅ **Multilingual Support (i18n)** - English, Chinese, Japanese, Spanish, French, Thai
 - ✅ **SEO Optimized** - Full metadata, sitemap, robots.txt, and social sharing
 - ✅ **Docker Deployment** - Complete Docker and Docker Compose setup
-- 🚧 **User Authentication** - NextAuth.js integration (in progress)
+- ✅ **User Authentication** - NextAuth.js 5.0 with email verification and OAuth (Google)
+- ✅ **Admin Dashboard** - Complete admin system with user/room management and analytics
+- ✅ **Role-Based Access** - First user becomes admin, automatic role assignment
+- ✅ **Email Verification** - SMTP-based email verification for new user registrations
 - 🚧 **Progress Tracking** - MongoDB storage (in progress)
 - 🚧 **Achievements & Gamification** - Coming soon
 
@@ -32,10 +35,11 @@ A modern, production-ready touch typing practice website built with Next.js 15, 
 - **Zustand 5.0** - State management
 
 ### Backend & Authentication
-- **NextAuth 5.0** (Beta 30) - Authentication solution
+- **NextAuth 5.0** (Beta 30) - Authentication solution with role-based access
 - **MongoDB 6.12** - NoSQL database
 - **Mongoose 8.9** - MongoDB ODM
 - **@auth/mongodb-adapter** - NextAuth MongoDB integration
+- **Nodemailer 6.9** - SMTP email sending for verification
 - **Redis 4.7** - Caching and session management (optional)
 - **bcryptjs 2.4** - Password hashing
 - **Zod 3.24** - Schema validation
@@ -79,10 +83,25 @@ cp .env.local.example .env.local
 
 4. Edit `.env.local` with your configuration:
 ```env
+# Database
 MONGODB_URI=mongodb://localhost:27017/typingstudy
 REDIS_URL=redis://localhost:6379
+
+# Authentication
 NEXTAUTH_SECRET=your-secret-key-here
 NEXTAUTH_URL=http://localhost:3000
+
+# Email (SMTP) - Required for email verification
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=noreply@typingtoy.com
+
+# OAuth (Optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 5. Run the development server:
@@ -99,11 +118,25 @@ typingtoy/
 ├── app/                          # Next.js App Router pages
 │   ├── api/                      # API routes
 │   │   ├── auth/                 # NextAuth endpoints
+│   │   │   ├── register/         # User registration API
+│   │   │   └── verify-email/     # Email verification API
+│   │   ├── admin/                # Admin API routes
+│   │   │   ├── stats/            # Platform statistics
+│   │   │   ├── statistics/       # Detailed analytics
+│   │   │   ├── users/            # User management CRUD
+│   │   │   └── rooms/            # Room management CRUD
 │   │   ├── generate-text/        # Text generation API
 │   │   └── user/                 # User data sync
+│   ├── admin/                    # Admin dashboard (protected)
+│   │   ├── layout.tsx            # Admin layout with role check
+│   │   ├── page.tsx              # Admin dashboard
+│   │   ├── users/                # User management page
+│   │   ├── rooms/                # Room management page
+│   │   └── statistics/           # Analytics dashboard
 │   ├── auth/                     # Authentication pages
 │   │   ├── signin/               # Sign in page
-│   │   └── signup/               # Sign up page
+│   │   ├── signup/               # Sign up page
+│   │   └── verify-email/         # Email verification page
 │   ├── lessons/                  # Lesson pages
 │   │   ├── page.tsx              # Lessons list
 │   │   ├── layout.tsx            # Lessons metadata
@@ -136,7 +169,9 @@ typingtoy/
 │   ├── db/                       # Database setup
 │   │   ├── mongodb.ts            # MongoDB connection
 │   │   └── models/               # Mongoose models
-│   │       └── User.ts           # User model
+│   │       ├── User.ts           # User model with role field
+│   │       └── VerificationToken.ts  # Email verification tokens
+│   ├── admin.ts                  # Admin helper functions
 │   ├── i18n/                     # Internationalization
 │   │   ├── index.ts              # i18n configuration
 │   │   ├── LanguageContext.tsx   # React context for i18n
@@ -150,7 +185,8 @@ typingtoy/
 │   ├── services/                 # Business logic
 │   │   ├── typingMetrics.ts      # WPM/accuracy calculations
 │   │   ├── progressStorage.ts    # Progress tracking
-│   │   └── userSettings.ts       # User settings management
+│   │   ├── userSettings.ts       # User settings management
+│   │   └── emailService.ts       # SMTP email sending
 │   ├── utils/                    # Helper functions
 │   │   └── textGenerator.ts      # Random text generation
 │   └── data/                     # Static data
@@ -209,6 +245,52 @@ The `TypingTest` component (`components/TypingTest.tsx`) handles:
 5. **Lesson 14**: Special characters (!@#$%^&*)
 6. **Lesson 15**: Master challenge (all keys)
 
+### Authentication & User System
+
+**Email Verification**
+- New user registrations require email verification via SMTP
+- Verification tokens expire after 24 hours
+- Automatic token cleanup using MongoDB TTL indexes
+- First registered user automatically becomes admin (no verification required)
+
+**Role-Based Access Control**
+- Two roles: `user` (default) and `admin`
+- First user in database automatically assigned `admin` role
+- OAuth users (Google) follow same first-user-becomes-admin logic
+- Admin role persisted in JWT token and session
+
+**Admin Dashboard** (`/admin`)
+- Protected route requiring `admin` role
+- User management: View, search, update roles, delete users
+- Room management: Monitor and manage multiplayer rooms
+- Statistics: Platform analytics with Chart.js visualizations
+- Noindex meta tags prevent search engine indexing
+
+### Email Configuration
+
+The application uses Nodemailer for SMTP email sending. To enable email verification:
+
+1. **Gmail Setup** (Recommended for development):
+   - Enable 2-factor authentication on your Google account
+   - Generate an App Password at https://myaccount.google.com/apppasswords
+   - Use these settings:
+     ```env
+     SMTP_HOST=smtp.gmail.com
+     SMTP_PORT=587
+     SMTP_SECURE=false
+     SMTP_USER=your-email@gmail.com
+     SMTP_PASSWORD=your-app-password
+     ```
+
+2. **Other SMTP Providers**:
+   - Port 587: Use `SMTP_SECURE=false` (STARTTLS)
+   - Port 465: Use `SMTP_SECURE=true` (SSL/TLS)
+
+3. **Test Email Configuration**:
+   ```bash
+   npx tsx scripts/test-email.ts
+   ```
+
 ## Deployment
 
 ### Docker (Recommended)
@@ -242,6 +324,7 @@ npm run build
 
 - **[Getting Started](./GETTING_STARTED.md)** - Setup and installation guide
 - **[Architecture](./ARCHITECTURE.md)** - Technical architecture details
+- **[Admin System](./ADMIN_SYSTEM.md)** - Admin dashboard and role management guide
 - **[Docker Deployment](./docs/DOCKER.md)** - Complete Docker guide
 - **[SEO Guide](./docs/SEO_GUIDE.md)** - SEO configuration and best practices
 - **[Features](./docs/FEATURES.md)** - Detailed feature documentation
@@ -264,15 +347,20 @@ npm run build
 - [x] Language selector component
 - [x] Multiple keyboard layouts (QWERTY, Dvorak, Colemak, etc.)
 
-### Phase 3: User System & Progress 🚧 In Progress
-- [x] NextAuth 5.0 authentication
+### Phase 3: User System & Progress ✅ Complete
+- [x] NextAuth 5.0 authentication with JWT
+- [x] Email verification system (SMTP with Nodemailer)
+- [x] OAuth integration (Google Sign-In)
+- [x] Role-based access control (user/admin roles)
+- [x] First-user-becomes-admin logic
+- [x] Admin dashboard with user/room management
+- [x] Platform statistics and analytics with Chart.js
 - [x] MongoDB user data storage
 - [x] Progress tracking and history (local storage)
 - [x] User profiles and settings
-- [x] Progress charts with Chart.js
-- [ ] Cloud sync for authenticated users
-- [ ] Achievement system
-- [ ] Leaderboards
+- [ ] Cloud sync for authenticated users (planned)
+- [ ] Achievement system (planned)
+- [ ] Leaderboards (planned)
 
 ### Phase 4: SEO & Deployment ✅ Complete
 - [x] Full SEO optimization (metadata, OG tags, Twitter cards)

@@ -80,17 +80,24 @@ This document provides a comprehensive overview of the Typing Toy application ar
 
 ### Authentication
 - **NextAuth 5.0** (Beta 30) - Authentication solution
-  - Email/password authentication
-  - Google OAuth (configured)
-  - Session management
+  - Email/password authentication with JWT
+  - Google OAuth integration
+  - Session management with role-based access
   - MongoDB adapter integration
+  - First-user-becomes-admin logic
 
 - **@auth/mongodb-adapter 3.11** - MongoDB integration
   - User data persistence
   - Session storage
 
+- **Nodemailer 6.9** - SMTP email service
+  - Email verification for new users
+  - Verification token generation
+  - SMTP/STARTTLS support
+  - HTML email templates
+
 - **bcryptjs 2.4** - Password hashing
-  - Secure password storage
+  - Secure password storage (10 rounds)
   - Salt generation
 
 - **Zod 3.24** - Schema validation
@@ -118,16 +125,34 @@ typingtoy/
 │   ├── api/                          # API routes
 │   │   ├── auth/                     # NextAuth endpoints
 │   │   │   ├── [...nextauth]/       # NextAuth API handler
-│   │   │   └── register/            # User registration
+│   │   │   ├── register/            # User registration
+│   │   │   └── verify-email/        # Email verification API
+│   │   ├── admin/                   # Admin API routes (protected)
+│   │   │   ├── stats/               # Platform statistics
+│   │   │   ├── statistics/          # Detailed analytics
+│   │   │   ├── users/               # User management CRUD
+│   │   │   └── rooms/               # Room management CRUD
 │   │   ├── generate-text/           # Text generation API
 │   │   │   └── route.ts             # Random text endpoint
 │   │   └── user/                    # User data APIs
 │   │       └── sync/                # Progress sync
 │   │
+│   ├── admin/                       # Admin dashboard (role-protected)
+│   │   ├── layout.tsx               # Admin layout with role check
+│   │   ├── page.tsx                 # Admin dashboard
+│   │   ├── users/                   # User management page
+│   │   │   └── page.tsx
+│   │   ├── rooms/                   # Room management page
+│   │   │   └── page.tsx
+│   │   └── statistics/              # Analytics dashboard
+│   │       └── page.tsx
+│   │
 │   ├── auth/                        # Authentication pages
 │   │   ├── signin/                  # Sign in page
 │   │   │   └── page.tsx
-│   │   └── signup/                  # Sign up page
+│   │   ├── signup/                  # Sign up page
+│   │   │   └── page.tsx
+│   │   └── verify-email/            # Email verification page
 │   │       └── page.tsx
 │   │
 │   ├── lessons/                     # Lessons feature
@@ -168,7 +193,11 @@ typingtoy/
 │   ├── db/                          # Database layer
 │   │   ├── mongodb.ts               # MongoDB connection
 │   │   └── models/                  # Mongoose models
-│   │       └── User.ts              # User schema
+│   │       ├── User.ts              # User schema with role field
+│   │       └── VerificationToken.ts # Email verification tokens
+│   │
+│   ├── admin.ts                     # Admin helper functions
+│   ├── auth.ts                      # NextAuth configuration
 │   │
 │   ├── i18n/                        # Internationalization
 │   │   ├── index.ts                 # i18n configuration
@@ -184,7 +213,8 @@ typingtoy/
 │   ├── services/                    # Business logic
 │   │   ├── typingMetrics.ts         # WPM/accuracy calculations
 │   │   ├── progressStorage.ts       # Local storage progress
-│   │   └── userSettings.ts          # User settings management
+│   │   ├── userSettings.ts          # User settings management
+│   │   └── emailService.ts          # SMTP email sending
 │   │
 │   ├── utils/                       # Helper functions
 │   │   └── textGenerator.ts         # Random text generation
@@ -301,6 +331,90 @@ Promotional banner for unregistered users:
 - Only shows for non-authenticated users
 - Translated content
 
+## Admin System Architecture
+
+### Role-Based Access Control
+
+**User Roles**:
+- `user`: Default role for regular users
+- `admin`: Administrative role with full access
+
+**Role Assignment**:
+- First user registered in the system automatically becomes `admin`
+- Subsequent users default to `user` role
+- OAuth users (Google) follow same first-user logic
+- Role stored in User model and propagated to JWT token and session
+
+**Implementation**:
+- Role field added to User model (`lib/db/models/User.ts`)
+- JWT callback adds role to token (`lib/auth.ts`)
+- Session callback exposes role to client
+- Admin routes protected via layout component (`app/admin/layout.tsx`)
+
+### Admin Dashboard Components
+
+**AdminLayout** (`app/admin/layout.tsx`)
+- Client component with session-based authentication
+- Checks user role before rendering admin pages
+- Redirects unauthenticated users to sign-in
+- Redirects non-admin users to home page
+- Includes navigation sidebar and header
+
+**Dashboard Pages**:
+1. **Dashboard** (`app/admin/page.tsx`) - Overview with key metrics
+2. **Users** (`app/admin/users/page.tsx`) - User management with search/filter
+3. **Rooms** (`app/admin/rooms/page.tsx`) - Multiplayer room monitoring
+4. **Statistics** (`app/admin/statistics/page.tsx`) - Analytics with Chart.js
+
+**Admin API Routes**:
+- `/api/admin/stats` - Platform statistics (user count, room count)
+- `/api/admin/statistics` - Detailed analytics with aggregation pipelines
+- `/api/admin/users` - CRUD operations for user management
+- `/api/admin/rooms` - Room management operations
+
+All admin API routes check session and role before processing requests.
+
+### Email Verification System
+
+**VerificationToken Model** (`lib/db/models/VerificationToken.ts`)
+- Stores verification tokens with expiration (24 hours)
+- Uses MongoDB TTL index for automatic cleanup
+- Fields: `userId`, `token`, `expires`
+- Unique index on token for fast lookups
+
+**Email Service** (`lib/services/emailService.ts`)
+- Nodemailer-based SMTP email sending
+- Supports STARTTLS (port 587) and SSL/TLS (port 465)
+- HTML email templates with verification links
+- Functions:
+  - `sendVerificationEmail()`: Send token to user
+  - `generateVerificationToken()`: Create random token
+  - Token format: 32-byte random hex string
+
+**Verification Flow**:
+1. User registers → Token created → Email sent
+2. User clicks link → GET `/api/auth/verify-email?token=xxx`
+3. API verifies token → Updates `emailVerified` field → Deletes token
+4. User redirected to success page
+5. User can now sign in
+
+**Special Cases**:
+- First user (admin): Email auto-verified, no token sent
+- OAuth users: Email auto-verified via provider
+- Expired tokens: Automatically deleted by MongoDB TTL index
+
+### SEO Protection for Admin Pages
+
+**robots.txt Configuration**:
+- Admin pages excluded from crawling (`/admin/*`)
+- API routes blocked (`/api/*`)
+- Auth pages blocked (`/auth/*`)
+
+**Meta Tags**:
+- Admin layout includes `noindex, nofollow` meta tags
+- Prevents search engines from indexing admin content
+- Implemented via Next.js Head component
+
 ## Data Flow
 
 ### 1. Typing Test Flow
@@ -343,22 +457,81 @@ Update progress charts
 
 ### 3. Authentication Flow
 
+**Registration with Email Verification**:
 ```
-User submits form
+User submits registration form
     ↓
 Client-side validation (Zod)
     ↓
-POST to /api/auth/register or signin
+POST to /api/auth/register
     ↓
-Server validates credentials
+Check if first user (admin logic)
     ↓
-bcrypt password check/hash
+bcrypt hash password (10 rounds)
     ↓
-NextAuth session creation
+Create user in MongoDB
     ↓
-MongoDB session storage
+If first user:
+    Set role=admin, emailVerified=now
+    → Auto sign-in → Redirect home
     ↓
-Redirect to dashboard
+If regular user:
+    Generate verification token (32-byte hex)
+    → Save to VerificationToken collection (24h expiry)
+    → Send email via Nodemailer
+    → Redirect to verify-email page
+    ↓
+User clicks email link
+    ↓
+GET /api/auth/verify-email?token=xxx
+    ↓
+Verify token exists and not expired
+    ↓
+Update user.emailVerified = now
+    ↓
+Delete verification token
+    ↓
+Redirect to success page
+    ↓
+User can now sign in
+```
+
+**Sign In Flow**:
+```
+User submits credentials
+    ↓
+POST to NextAuth credentials provider
+    ↓
+Verify email is verified
+    ↓
+bcrypt compare password
+    ↓
+JWT token creation (includes role)
+    ↓
+Session creation (includes role)
+    ↓
+Redirect to home
+```
+
+**OAuth Flow (Google)**:
+```
+User clicks "Sign in with Google"
+    ↓
+OAuth redirect to Google
+    ↓
+User authorizes
+    ↓
+Callback to /api/auth/callback/google
+    ↓
+Check if first user → Set role=admin
+    ↓
+Auto-verify email (OAuth provider verified)
+    ↓
+Create/update user in MongoDB
+    ↓
+Create session with role
+    ↓
+Redirect to home
 ```
 
 ### 4. i18n Flow
@@ -375,6 +548,44 @@ Load translation file (e.g., th.ts)
 Re-render all components
     ↓
 Display translated text
+```
+
+### 5. Admin Dashboard Flow
+
+```
+Admin navigates to /admin
+    ↓
+AdminLayout component loads
+    ↓
+Check NextAuth session
+    ↓
+If not authenticated → Redirect to /auth/signin
+    ↓
+If authenticated but role !== 'admin' → Redirect to /
+    ↓
+If admin:
+    ↓
+Render admin navigation sidebar
+    ↓
+Load requested admin page (users/rooms/statistics)
+    ↓
+Page fetches data from admin API routes
+    ↓
+API routes verify session and admin role
+    ↓
+Query MongoDB (with aggregation if needed)
+    ↓
+Return data as JSON
+    ↓
+Render tables/charts with data
+    ↓
+Admin performs actions (edit user, delete room, etc.)
+    ↓
+API route processes action
+    ↓
+Return success/error
+    ↓
+Refresh page data
 ```
 
 ## API Routes
@@ -394,11 +605,59 @@ Handles all authentication:
 
 New user registration:
 - Validates input (Zod)
-- Hashes password (bcryptjs)
+- Checks if first user (admin assignment)
+- Hashes password (bcryptjs, 10 rounds)
 - Creates MongoDB user
+- If first user: auto-verifies email, returns user data
+- If regular user: generates verification token, sends email
 - Returns success/error
 
-### 3. Text Generation
+### 3. Email Verification
+**Route**: `/api/auth/verify-email`
+
+Email verification endpoint:
+- **POST**: Verify token programmatically
+- **GET**: Verify token from email link (redirects to UI)
+- Checks token validity and expiration
+- Updates user.emailVerified field
+- Deletes verification token
+- Returns success/error (POST) or redirects (GET)
+
+### 4. Admin Statistics
+**Route**: `/api/admin/stats`
+
+Platform statistics for admin dashboard:
+- Requires admin role
+- Returns: total users, total rooms, active rooms, recent users
+- Protected by session and role check
+
+### 5. Admin Analytics
+**Route**: `/api/admin/statistics`
+
+Detailed platform analytics:
+- Requires admin role
+- Uses MongoDB aggregation pipelines
+- Returns: user growth, game type distribution, peak hours
+- Chart-ready data format
+
+### 6. Admin User Management
+**Route**: `/api/admin/users`
+
+User CRUD operations:
+- **GET**: List all users with pagination/search
+- **PUT**: Update user (role, status)
+- **DELETE**: Delete user
+- Protected by admin role
+
+### 7. Admin Room Management
+**Route**: `/api/admin/rooms`
+
+Room management operations:
+- **GET**: List all multiplayer rooms
+- **DELETE**: Delete/close room
+- Protected by admin role
+
+### 8. Text Generation
 **Route**: `/api/generate-text`
 
 Generates random typing text:
@@ -406,7 +665,7 @@ Generates random typing text:
 - Returns: text, wordCount, timestamp
 - Copyright-free content
 
-### 4. User Sync
+### 9. User Sync
 **Route**: `/api/user/sync`
 
 Syncs local progress to cloud:
@@ -567,22 +826,48 @@ const { t } = useLanguage();
 
 ### Authentication
 - Password hashing (bcrypt, 10 rounds)
-- Secure session cookies
+- Email verification for new users (SMTP tokens)
+- Verification token expiration (24 hours)
+- Automatic token cleanup (MongoDB TTL indexes)
+- Secure session cookies (JWT)
 - CSRF protection (NextAuth)
 - HTTPOnly cookies
 - Same-site cookie policy
 
+### Role-Based Authorization
+- Role stored in JWT token and session
+- Admin routes protected at layout level
+- Admin API routes verify role before processing
+- Non-admin users blocked from admin pages
+- First-user-becomes-admin prevents lockout
+
 ### Input Validation
-- Zod schema validation
-- Server-side validation
-- SQL injection prevention (Mongoose)
+- Zod schema validation (client and server)
+- Server-side validation for all inputs
+- SQL injection prevention (Mongoose ODM)
 - XSS prevention (React escaping)
+- Email format validation
+- Token format validation
+
+### Email Security
+- SMTP with STARTTLS/SSL support
+- Environment-based email credentials
+- HTML email sanitization
+- Verification link expiration
+- Rate limiting (future)
+
+### SEO Security
+- Admin pages blocked from search engines
+- API routes excluded from robots.txt
+- Noindex meta tags on admin pages
+- No sensitive data in public routes
 
 ### Environment Variables
 - Never commit `.env` files
 - Use `.env.example` templates
-- Validate required env vars
+- Validate required env vars (SMTP, MongoDB, etc.)
 - Separate dev/prod configs
+- Secure storage of SMTP credentials
 
 ## Testing Strategy (Future)
 
@@ -649,7 +934,8 @@ docker compose up -d
 
 ---
 
-**Last Updated**: November 2025
-**Version**: 2.0
+**Last Updated**: January 2025
+**Version**: 2.1
 **Next.js**: 16.0.1
 **React**: 19.2.0
+**Major Features**: Admin Dashboard, Email Verification, Role-Based Access Control

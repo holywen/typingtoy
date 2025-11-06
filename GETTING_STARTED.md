@@ -36,6 +36,10 @@ The basic typing features work without any database setup! Just follow these ste
 - Visual feedback (green for correct, red for errors)
 - Responsive design (works on mobile and desktop)
 - Dark mode support (follows system preference)
+- User authentication (email/password and Google OAuth)
+- Email verification for new users
+- Admin dashboard with user and room management
+- Role-based access control (user/admin)
 
 ## Current Pages
 
@@ -62,6 +66,169 @@ The basic typing features work without any database setup! Just follow these ste
 - Lesson-specific content
 - Progress through lessons with next/previous buttons
 - Same real-time tracking as speed test
+
+### Authentication Pages
+- **Sign In** (`/auth/signin`) - Login with email/password or Google
+- **Sign Up** (`/auth/signup`) - Create new account
+- **Verify Email** (`/auth/verify-email`) - Email verification status
+
+### Admin Dashboard (`/admin`) - Admin Only
+- **Dashboard** - Platform statistics overview
+- **Users** (`/admin/users`) - User management (view, edit, delete)
+- **Rooms** (`/admin/rooms`) - Multiplayer room monitoring
+- **Statistics** (`/admin/statistics`) - Detailed analytics with charts
+
+## Setting Up User Authentication (Optional)
+
+If you want to enable user accounts, email verification, and admin features:
+
+### 1. Install MongoDB
+
+**Option A: Local MongoDB**
+```bash
+# macOS (with Homebrew)
+brew install mongodb-community
+brew services start mongodb-community
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install mongodb
+sudo systemctl start mongod
+
+# Windows
+# Download installer from https://www.mongodb.com/try/download/community
+```
+
+**Option B: MongoDB Atlas (Cloud)**
+1. Create free account at https://www.mongodb.com/cloud/atlas
+2. Create a cluster
+3. Get connection string (looks like: `mongodb+srv://username:password@cluster.mongodb.net/dbname`)
+
+### 2. Configure Environment Variables
+
+Create `.env.local` file in the project root:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Edit `.env.local` with your configuration:
+
+```env
+# Database
+MONGODB_URI=mongodb://localhost:27017/typingtoy
+# OR for MongoDB Atlas:
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/typingtoy
+
+# Authentication
+NEXTAUTH_SECRET=your-secret-key-here-use-openssl-rand-base64-32
+NEXTAUTH_URL=http://localhost:3000
+
+# Email Verification (SMTP)
+# Option 1: Gmail (Recommended for development)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=noreply@typingtoy.com
+
+# Option 2: Other SMTP providers (SendGrid, Mailgun, etc.)
+# SMTP_HOST=smtp.sendgrid.net
+# SMTP_PORT=587
+# SMTP_SECURE=false
+# SMTP_USER=apikey
+# SMTP_PASSWORD=your-api-key
+
+# OAuth (Optional - for Google Sign-In)
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+### 3. Generate Authentication Secret
+
+Generate a secure secret for NextAuth:
+
+```bash
+openssl rand -base64 32
+```
+
+Copy the output and use it for `NEXTAUTH_SECRET` in `.env.local`
+
+### 4. Set Up SMTP Email (Gmail Example)
+
+To enable email verification with Gmail:
+
+1. **Enable 2-Factor Authentication** on your Google account
+   - Go to https://myaccount.google.com/security
+   - Enable "2-Step Verification"
+
+2. **Generate App Password**
+   - Go to https://myaccount.google.com/apppasswords
+   - Select "Mail" and "Other (Custom name)"
+   - Name it "Typing Toy"
+   - Copy the 16-character password
+
+3. **Update `.env.local`**
+   ```env
+   SMTP_USER=your-email@gmail.com
+   SMTP_PASSWORD=abcd efgh ijkl mnop  # The app password from step 2
+   ```
+
+4. **Test Email Configuration**
+   ```bash
+   npx tsx scripts/test-email.ts
+   ```
+
+### 5. Set Up Google OAuth (Optional)
+
+To enable "Sign in with Google":
+
+1. **Create Google Cloud Project**
+   - Go to https://console.cloud.google.com/
+   - Create a new project or select existing one
+
+2. **Enable Google+ API**
+   - Navigate to "APIs & Services" > "Library"
+   - Search for "Google+ API"
+   - Click "Enable"
+
+3. **Create OAuth Credentials**
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - Application type: "Web application"
+   - Authorized redirect URIs:
+     - `http://localhost:3000/api/auth/callback/google`
+     - Add production URL when deploying
+
+4. **Update `.env.local`**
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   ```
+
+### 6. Start with Authentication Enabled
+
+```bash
+npm run dev
+```
+
+Visit http://localhost:3000 and click "Sign Up" to create your first account.
+
+### 7. First User Setup (Admin)
+
+**Important**: The first user you register automatically becomes an admin!
+
+1. Go to http://localhost:3000/auth/signup
+2. Fill in registration form
+3. As first user, email verification is skipped
+4. You'll be automatically signed in
+5. Access admin dashboard at http://localhost:3000/admin
+
+**Regular Users** (after first user):
+- Must verify email before signing in
+- Check email inbox for verification link
+- Click link to verify email
+- Then sign in normally
 
 ## Project Architecture
 
@@ -115,22 +282,66 @@ Edit `lib/services/typingMetrics.ts` to adjust:
 - Accuracy computation
 - Stats update frequency
 
+## Completed Features
+
+### User Authentication ✅
+- Email/password registration and login
+- Email verification with SMTP
+- Google OAuth integration
+- First-user-becomes-admin logic
+- Role-based access control
+
+### Admin System ✅
+- Admin dashboard with statistics
+- User management (view, edit, delete)
+- Room management
+- Platform analytics with Chart.js
+
+### Internationalization ✅
+- Multi-language support (6 languages)
+- Multiple keyboard layouts (QWERTY, Dvorak, Colemak, etc.)
+- Language switcher component
+
 ## Next Steps (Coming Soon)
 
-### Phase 2: User Accounts
-- Sign up / Login functionality
-- Save progress to database
-- View typing history
-- Track improvement over time
+### Cloud Progress Sync
+- Save typing history to MongoDB
+- Sync progress across devices
+- View historical performance
 
-### Phase 3: Advanced Features
-- Multi-language support (50+ languages)
-- Multiple keyboard layouts (Dvorak, Colemak, etc.)
+### Advanced Features
 - Achievement system
 - Leaderboards
 - Custom practice texts
+- Typing games
+- Daily challenges
 
 ## Troubleshooting
+
+### Authentication Issues
+
+**"Email verification email not sent"**
+- Check SMTP configuration in `.env.local`
+- Test email with: `npx tsx scripts/test-email.ts`
+- For Gmail: Ensure 2FA enabled and using app password
+- Port 587: Use `SMTP_SECURE=false` (STARTTLS)
+- Port 465: Use `SMTP_SECURE=true` (SSL/TLS)
+
+**"Cannot sign in - email not verified"**
+- Check your email inbox (and spam folder)
+- Click the verification link
+- Link expires after 24 hours - register again if expired
+- First user (admin) doesn't need verification
+
+**"Cannot access /admin pages"**
+- Only admin users can access admin dashboard
+- First registered user automatically becomes admin
+- Other users need admin role assigned by existing admin
+
+**MongoDB connection errors**
+- Ensure MongoDB is running: `brew services list` (macOS)
+- Check `MONGODB_URI` in `.env.local`
+- For Atlas: Whitelist your IP address in MongoDB Atlas dashboard
 
 ### Port Already in Use
 If port 3000 is already in use:

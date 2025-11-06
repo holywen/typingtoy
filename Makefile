@@ -1,4 +1,4 @@
-.PHONY: help build up down restart logs status clean dev prod
+.PHONY: help build up down restart logs status clean dev prod test-email
 
 # Default target
 help:
@@ -6,19 +6,20 @@ help:
 	@echo "=============================="
 	@echo ""
 	@echo "Available commands:"
-	@echo "  make build     - Build Docker images"
-	@echo "  make up        - Start services in development mode"
-	@echo "  make down      - Stop all services"
-	@echo "  make restart   - Restart all services"
-	@echo "  make logs      - View logs (all services)"
-	@echo "  make logs-app  - View app logs only"
-	@echo "  make logs-db   - View MongoDB logs only"
-	@echo "  make status    - Show service status"
-	@echo "  make clean     - Remove containers and volumes"
-	@echo "  make dev       - Start in development mode"
-	@echo "  make prod      - Start in production mode"
-	@echo "  make shell     - Open shell in app container"
-	@echo "  make db-shell  - Open MongoDB shell"
+	@echo "  make build      - Build Docker images"
+	@echo "  make up         - Start services in development mode"
+	@echo "  make down       - Stop all services"
+	@echo "  make restart    - Restart all services"
+	@echo "  make logs       - View logs (all services)"
+	@echo "  make logs-app   - View app logs only"
+	@echo "  make logs-db    - View MongoDB logs only"
+	@echo "  make status     - Show service status"
+	@echo "  make clean      - Remove containers and volumes"
+	@echo "  make dev        - Start in development mode"
+	@echo "  make prod       - Start in production mode"
+	@echo "  make shell      - Open shell in app container"
+	@echo "  make db-shell   - Open MongoDB shell"
+	@echo "  make test-email - Test SMTP email configuration"
 
 # Build images
 build:
@@ -32,9 +33,10 @@ up dev:
 
 # Start services (production)
 prod:
-	docker compose -f docker compose.yml -f docker compose.prod.yml up -d
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 	@echo "✅ Services started in production mode"
 	@echo "🌐 App: http://localhost:3000"
+	@echo "⚠️  Note: Make sure to set SMTP environment variables for email verification"
 
 # Stop services
 down:
@@ -81,3 +83,9 @@ db-shell:
 rebuild:
 	docker compose up -d --build
 	@echo "✅ Rebuild complete"
+
+# Test SMTP email configuration
+test-email:
+	@echo "Testing SMTP email configuration..."
+	docker compose exec app npx tsx scripts/test-email.ts
+	@echo "✅ Check your email inbox (including spam folder)"
