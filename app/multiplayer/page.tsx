@@ -20,6 +20,12 @@ export default function MultiplayerPage() {
       return;
     }
 
+    // Require authentication - redirect to sign in if not authenticated
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin?callbackUrl=/multiplayer');
+      return;
+    }
+
     async function initialize() {
       try {
         // Get device identity

@@ -15,7 +15,7 @@ import MultiplayerFallingWords from '@/components/multiplayer/MultiplayerFalling
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [room, setRoom] = useState<GameRoom | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +26,26 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [socketConnected, setSocketConnected] = useState(false);
   const [gameActive, setGameActive] = useState(false);
 
+  // Check authentication before initializing
+  useEffect(() => {
+    if (status === 'loading') {
+      return;
+    }
+
+    // Require authentication - redirect to sign in if not authenticated
+    if (status === 'unauthenticated') {
+      router.push(`/auth/signin?callbackUrl=/multiplayer/room/${roomId}`);
+      return;
+    }
+  }, [status, router, roomId]);
+
   // Initialize player identity and socket connection
   useEffect(() => {
+    // Don't initialize until authentication is confirmed
+    if (status !== 'authenticated') {
+      return;
+    }
+
     async function init() {
       const identity = await getDeviceIdentity();
       // Use the same playerId logic as the server: userId || deviceId
@@ -66,7 +84,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     }
     init();
-  }, [session?.user?.id]); // Re-run when session userId changes
+  }, [session?.user?.id, status]); // Re-run when session userId changes or status changes
 
   // Join room via socket when connected
   useEffect(() => {
