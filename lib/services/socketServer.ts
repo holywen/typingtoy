@@ -93,11 +93,20 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       const { RoomManager } = await import('./roomManager');
       const onlinePlayerIds = await redis.smembers('online:players');
 
-      const players = await Promise.all(
+      const players = (await Promise.all(
         onlinePlayerIds.map(async (pid) => {
           const socketId = await redis.get(`player:${pid}:socketId`);
           const socket = io!.sockets.sockets.get(socketId || '');
-          const displayName = socket?.data?.displayName || 'Unknown';
+
+          // Skip players whose sockets can't be found (stale Redis data)
+          if (!socket) {
+            console.log(`⚠️ Stale player in Redis, removing: ${pid}`);
+            await redis.srem('online:players', pid);
+            await redis.del(`player:${pid}:socketId`);
+            return null;
+          }
+
+          const displayName = socket.data?.displayName || 'Guest';
 
           // Check player status
           const room = await RoomManager.getRoomByPlayerId(pid);
@@ -113,7 +122,7 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
             status
           };
         })
-      );
+      )).filter((player): player is NonNullable<typeof player> => player !== null);
 
       // Broadcast to all connected clients
       io!.emit('lobby:players', { players });
