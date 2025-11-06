@@ -63,18 +63,25 @@ export default function SignUpPage() {
         return;
       }
 
-      // Auto sign in after registration
-      const result = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
+      // Check if user is admin (first user) - they can auto-login
+      // Regular users need to verify email first
+      if (data.user?.role === 'admin') {
+        // Admin user - auto sign in
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        });
 
-      if (result?.error) {
-        setError(t.auth.errors.registrationFailed);
+        if (result?.error) {
+          setError(result.error);
+        } else {
+          router.push('/');
+          router.refresh();
+        }
       } else {
-        router.push('/');
-        router.refresh();
+        // Regular user - redirect to verification page
+        router.push('/auth/verify-email?email=' + encodeURIComponent(email));
       }
     } catch (error) {
       setError(t.auth.errors.errorOccurred);

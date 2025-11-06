@@ -8,6 +8,7 @@ interface UserDocument extends mongoose.Document {
   password?: string;
   image?: string;
   emailVerified?: Date;
+  role: 'user' | 'admin';
   settings: {
     keyboardLayout: string;
     soundEnabled: boolean;
@@ -63,6 +64,11 @@ const UserSchema = new Schema<UserDocument>(
     },
     emailVerified: {
       type: Date,
+    },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
     },
     settings: {
       keyboardLayout: {

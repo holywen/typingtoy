@@ -9,8 +9,8 @@ export const metadata: Metadata = {
     default: "Typing Toy - Learn Touch Typing",
     template: "%s | Typing Toy"
   },
-  description: "Master touch typing with progressive lessons, speed tests, and multilingual support. Free online typing tutor with 15 lessons covering all keyboard keys.",
-  keywords: ["typing tutor", "touch typing", "typing practice", "learn typing", "typing lessons", "typing speed test", "keyboard practice", "typing skills", "free typing course"],
+  description: "Master touch typing with progressive lessons, speed tests, multiplayer typing games, and multilingual support. Free online typing tutor with 15 lessons covering all keyboard keys. Compete with friends in real-time typing battles!",
+  keywords: ["typing tutor", "touch typing", "typing practice", "learn typing", "typing lessons", "typing speed test", "keyboard practice", "typing skills", "free typing course", "multiplayer typing games", "typing competition", "online typing games", "typing battle", "wpm test", "typing race"],
   authors: [{ name: "Typing Toy" }],
   creator: "Typing Toy",
   publisher: "Typing Toy",
@@ -24,8 +24,8 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: "Typing Toy - Learn Touch Typing",
-    description: "Master touch typing with progressive lessons, speed tests, and multilingual support. Free online typing tutor.",
+    title: "Typing Toy - Learn Touch Typing & Play Multiplayer Typing Games",
+    description: "Master touch typing with 15 progressive lessons, speed tests, and real-time multiplayer typing games. Free online typing tutor with competitive gameplay!",
     url: '/',
     siteName: 'Typing Toy',
     locale: 'en_US',
@@ -41,8 +41,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: "Typing Toy - Learn Touch Typing",
-    description: "Master touch typing with progressive lessons, speed tests, and multilingual support.",
+    title: "Typing Toy - Learn Touch Typing & Play Multiplayer Games",
+    description: "Master touch typing with progressive lessons and compete in real-time multiplayer typing games. Free typing tutor!",
     images: ['/icon.svg'],
   },
   robots: {
