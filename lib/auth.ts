@@ -76,20 +76,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // For OAuth providers, check if this is the first user and set as admin
       if (account?.provider === 'google') {
         try {
-          await connectDB();
+          // Use the same MongoDB client that MongoDBAdapter uses
+          const client = await clientPromise;
+          const db = client.db();
+          const usersCollection = db.collection('users');
 
-          // Check total user count in the native MongoDB collection
-          // Note: MongoDBAdapter creates the user before this callback runs,
-          // so we check if userCount <= 1 (the just-created user)
-          const userCount = await User.countDocuments();
+          // Check total user count in the same database as MongoDBAdapter
+          const userCount = await usersCollection.countDocuments();
 
-          console.log(`[OAuth SignIn] User count: ${userCount}, Email: ${user.email}`);
+          console.log(`[OAuth SignIn] User count: ${userCount}, Email: ${user.email}, DB: ${db.databaseName}`);
 
           // If this is the first user, set them as admin and auto-verify email
           if (userCount <= 1) {
-            // Use updateOne to directly update the MongoDB collection
-            // This works even if the document doesn't have all Mongoose schema fields
-            const result = await User.updateOne(
+            // Use native MongoDB updateOne to directly update the collection
+            const result = await usersCollection.updateOne(
               { email: user.email },
               {
                 $set: {
