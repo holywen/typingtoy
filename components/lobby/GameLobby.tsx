@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { GameType } from '@/types/multiplayer';
 import { getPlayerDisplayName } from '@/lib/services/deviceId';
 import RoomList from './RoomList';
@@ -8,6 +9,7 @@ import CreateRoomDialog from './CreateRoomDialog';
 import QuickMatchButton from './QuickMatchButton';
 import ChatBox from './ChatBox';
 import OnlinePlayerList from './OnlinePlayerList';
+import { Trophy } from 'lucide-react';
 
 interface GameLobbyProps {
   deviceIdentity: any;
@@ -15,6 +17,7 @@ interface GameLobbyProps {
 }
 
 export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
+  const router = useRouter();
   const displayName = getPlayerDisplayName(session?.user, deviceIdentity);
   const [selectedGameType, setSelectedGameType] = useState<GameType>('falling-blocks');
   const [showCreateRoom, setShowCreateRoom] = useState(false);
@@ -55,6 +58,13 @@ export default function GameLobby({ deviceIdentity, session }: GameLobbyProps) {
               Playing as: <span className="font-semibold">{displayName}</span>
             </p>
           </div>
+          <button
+            onClick={() => router.push('/multiplayer/leaderboard')}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all shadow-lg hover:shadow-xl font-semibold"
+          >
+            <Trophy className="w-5 h-5" />
+            Leaderboard
+          </button>
         </div>
 
         {/* Game Type Selector */}
