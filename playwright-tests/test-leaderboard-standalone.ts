@@ -10,6 +10,10 @@ const __dirname = dirname(__filename);
 async function testLeaderboard() {
   console.log('🧪 Testing Leaderboard System...\n');
 
+  // Test user credentials
+  const TEST_EMAIL = 'test@typingtoy.com';
+  const TEST_PASSWORD = 'TestPassword123!';
+
   // Create screenshots directory if it doesn't exist
   const screenshotsDir = path.join(__dirname, 'screenshots');
   if (!fs.existsSync(screenshotsDir)) {
@@ -23,10 +27,189 @@ async function testLeaderboard() {
   const page = await context.newPage();
 
   try {
+    // Step 1: Login
+    console.log('📍 Step 0: Login as test user');
+    await page.goto('http://localhost:3000/auth/signin');
+    await page.waitForSelector('h1:has-text("Sign In")', { timeout: 10000 });
+    console.log('✅ Sign in page loaded');
+
+    // Fill in login form
+    await page.fill('input[type="email"]', TEST_EMAIL);
+    await page.fill('input[type="password"]', TEST_PASSWORD);
+    console.log('✅ Credentials entered');
+
+    // Fill in human verification (dynamically solve the math problem)
+    const verificationLabel = await page.locator('label[for="humanCheck"]').textContent();
+    console.log(`✅ Found human verification: ${verificationLabel}`);
+
+    // Parse the math problem (e.g., "Human Verification: 7 + 5 = ?")
+    const match = verificationLabel?.match(/(\d+)\s*([\+\-\*\/])\s*(\d+)/);
+    let answer = 0;
+    if (match) {
+      const num1 = parseInt(match[1]);
+      const operator = match[2];
+      const num2 = parseInt(match[3]);
+
+      switch (operator) {
+        case '+': answer = num1 + num2; break;
+        case '-': answer = num1 - num2; break;
+        case '*': answer = num1 * num2; break;
+        case '/': answer = Math.floor(num1 / num2); break;
+      }
+      console.log(`✅ Calculated answer: ${num1} ${operator} ${num2} = ${answer}`);
+    }
+
+    // Clear any existing value first
+    await page.locator('input#humanCheck').click();
+    await page.locator('input#humanCheck').clear();
+
+    // Type the answer character by character to trigger React onChange properly
+    await page.locator('input#humanCheck').type(answer.toString(), { delay: 100 });
+
+    // Press Tab to trigger blur event and ensure React processes the onChange
+    await page.keyboard.press('Tab');
+
+    // Wait longer for React state to update
+    await page.waitForTimeout(2000);
+    console.log('✅ Human verification completed');
+
+    // Take screenshot of sign-in page
+    await page.screenshot({
+      path: path.join(screenshotsDir, '00-signin-page.png'),
+      fullPage: true
+    });
+    console.log('✅ Screenshot 0: Sign-in page\n');
+
+    // Debug: Check form values before submission
+    const emailValue = await page.locator('input[type="email"]').inputValue();
+    const passwordValue = await page.locator('input[type="password"]').inputValue();
+    const captchaValue = await page.locator('input#humanCheck').inputValue();
+    console.log('📋 Debug - Form values before submission:');
+    console.log(`   Email: ${emailValue}`);
+    console.log(`   Password: ${passwordValue ? '***' + passwordValue.slice(-3) : 'EMPTY'}`);
+    console.log(`   CAPTCHA: ${captchaValue} (expected: ${answer})`);
+
+    // Check if submit button is disabled
+    const isDisabled = await page.locator('button[type="submit"]').isDisabled();
+    console.log(`   Submit button disabled: ${isDisabled}`);
+
+    // Check for CAPTCHA error message
+    const captchaError = await page.locator('input#humanCheck + p').count();
+    if (captchaError > 0) {
+      const errorText = await page.locator('input#humanCheck + p').textContent();
+      console.log(`   ⚠️  CAPTCHA error visible: "${errorText}"`);
+    } else {
+      console.log(`   ✅ No CAPTCHA error visible`);
+    }
+
+    // Listen for ALL API requests and responses
+    const capturedRequests: any[] = [];
+    page.on('request', request => {
+      if (request.url().includes('/api/auth')) {
+        capturedRequests.push({
+          type: 'request',
+          method: request.method(),
+          url: request.url(),
+          postData: request.postDataJSON()
+        });
+      }
+    });
+    page.on('response', async response => {
+      if (response.url().includes('/api/auth')) {
+        let body = '';
+        try {
+          body = await response.text();
+        } catch (e) {
+          body = '[unable to read]';
+        }
+        capturedRequests.push({
+          type: 'response',
+          url: response.url(),
+          status: response.status(),
+          body: body.substring(0, 500)
+        });
+      }
+    });
+
+    // Click sign in button
+    await page.click('button[type="submit"]:has-text("Sign In")');
+    console.log('✅ Sign in button clicked');
+
+    // Wait for either success redirect or error message
+    await page.waitForTimeout(3000);
+
+    // Log all captured auth requests and responses
+    console.log(`📡 Captured ${capturedRequests.length} auth API calls:\n`);
+    capturedRequests.forEach((item, i) => {
+      if (item.type === 'request') {
+        console.log(`   ${i + 1}. REQUEST: ${item.method} ${item.url}`);
+        if (item.postData) {
+          console.log(`      POST data: ${JSON.stringify(item.postData)}`);
+        }
+      } else if (item.type === 'response') {
+        console.log(`   ${i + 1}. RESPONSE: ${item.status} ${item.url}`);
+        console.log(`      Body: ${item.body}`);
+      }
+    });
+    console.log('');
+
+    // Check if we're still on sign-in page (login failed)
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth/signin')) {
+      console.log('❌ Still on sign-in page after submission');
+
+      // Check for error messages
+      const bodyText = await page.locator('body').textContent();
+      if (bodyText?.includes('Invalid credentials') || bodyText?.includes('error')) {
+        console.log('❌ Error message found on page');
+        console.log('   Body excerpt:', bodyText?.substring(0, 300));
+      }
+
+      // Try to find any error divs
+      const errorDivs = await page.locator('[class*="error"], [class*="alert"]').count();
+      if (errorDivs > 0) {
+        const errorText = await page.locator('[class*="error"], [class*="alert"]').first().textContent();
+        console.log('❌ Error div found:', errorText);
+      }
+
+      throw new Error('Login failed - still on sign-in page');
+    }
+
+    console.log('✅ Login successful\n');
+
     // Navigate to multiplayer lobby
     console.log('📍 Step 1: Navigate to /multiplayer');
-    await page.goto('http://localhost:3000/multiplayer');
-    await page.waitForSelector('h1:has-text("Multiplayer Lobby")', { timeout: 10000 });
+    await page.goto('http://localhost:3000/multiplayer', { waitUntil: 'networkidle' });
+    console.log('✅ Page navigation complete, waiting for lobby...');
+
+    // Check page title and URL
+    const url = page.url();
+    const title = await page.title();
+    console.log(`   Current URL: ${url}`);
+    console.log(`   Page title: ${title}`);
+
+    // Get page text content for debugging
+    const bodyText = await page.locator('body').textContent();
+    console.log(`   Page contains: ${bodyText?.substring(0, 200)}...`);
+
+    // Wait longer for socket connection and lobby render
+    // Check if there's a loading or error message
+    const hasError = await page.locator('text=error').count() > 0;
+    if (hasError) {
+      console.log('⚠️  Error message detected on page');
+    }
+
+    const hasConnecting = await page.locator('text=Connecting').count() > 0;
+    if (hasConnecting) {
+      console.log('⏳ Connection in progress, waiting...');
+      await page.waitForTimeout(5000);
+    }
+
+    await page.waitForSelector('h1:has-text("Multiplayer Lobby")', { timeout: 30000 });
+    console.log('✅ Lobby header found');
+
+    // Wait a bit more for socket to connect
+    await page.waitForTimeout(2000);
     console.log('✅ Lobby loaded\n');
 
     // Take screenshot of lobby with leaderboard button
