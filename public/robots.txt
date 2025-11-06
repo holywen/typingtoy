@@ -14,6 +14,10 @@ Crawl-delay: 1
 # Disallow API routes from indexing
 Disallow: /api/
 
+# Disallow multiplayer pages (real-time interaction, not useful for crawlers)
+Disallow: /multiplayer/
+Disallow: /multiplayer
+
 # Allow important pages
 Allow: /
 Allow: /lessons
@@ -21,6 +25,8 @@ Allow: /lessons/*
 Allow: /test
 Allow: /practice
 Allow: /progress
+Allow: /games
+Allow: /games/*
 
 # Block authentication pages if any
 Disallow: /auth/
