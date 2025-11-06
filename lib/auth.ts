@@ -22,40 +22,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Email and password required');
+        try {
+          if (!credentials?.email || !credentials?.password) {
+            return null;
+          }
+
+          // Connect to MongoDB
+          await connectDB();
+
+          // Find user
+          const user = await User.findOne({ email: credentials.email });
+
+          if (!user || !user.password) {
+            return null;
+          }
+
+          // Verify password
+          const isValid = await bcrypt.compare(
+            credentials.password as string,
+            user.password
+          );
+
+          if (!isValid) {
+            return null;
+          }
+
+          // Check if email is verified (skip for admin users)
+          if (!user.emailVerified && user.role !== 'admin') {
+            return null;
+          }
+
+          // Return user object for session
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name || user.email,
+          };
+        } catch (error) {
+          console.error('Error in authorize:', error);
+          return null;
         }
-
-        // Connect to MongoDB
-        await connectDB();
-
-        // Find user
-        const user = await User.findOne({ email: credentials.email });
-
-        if (!user || !user.password) {
-          throw new Error('Invalid email or password');
-        }
-
-        // Verify password
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
-
-        if (!isValid) {
-          throw new Error('Invalid email or password');
-        }
-
-        // Check if email is verified (skip for admin users)
-        if (!user.emailVerified && user.role !== 'admin') {
-          throw new Error('Please verify your email before signing in. Check your inbox for the verification email.');
-        }
-
-        return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.name,
-        };
       },
     }),
   ],
@@ -82,13 +88,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             dbUser.role = 'admin';
             dbUser.emailVerified = new Date(); // Auto-verify first admin user
             await dbUser.save();
-            console.log('🔐 First OAuth user created - assigned admin role and auto-verified:', user.email);
           }
         }
       }
       return true;
     },
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user }) {
       // On sign in (when user object is available)
       if (user) {
         token.id = user.id;

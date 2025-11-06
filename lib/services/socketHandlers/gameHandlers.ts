@@ -298,9 +298,7 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
       playerLastKeystroke.set(playerId, now);
 
       // Process player input
-      console.log(`🎮 Processing input from ${playerId}:`, input);
       const result = game.handlePlayerInput(playerId, input);
-      console.log(`📊 Input result:`, result);
 
       // Broadcast updated player state to all players in room
       if (result.success) {
@@ -311,14 +309,12 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
             playerId,
             playerState,
           });
-          console.log(`✅ Block destroyed! Player ${playerId} score: ${playerState.score}`);
         }
       } else {
         socket.emit('game:input:rejected', {
           reason: result.error || 'Input validation failed',
           input,
         });
-        console.log(`❌ Input rejected: ${result.error || 'Input validation failed'}`);
       }
     } catch (error) {
       console.error('Error handling game input:', error);
