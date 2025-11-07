@@ -21,8 +21,10 @@ A modern, production-ready touch typing practice website built with Next.js 15, 
 - ✅ **Admin Dashboard** - Complete admin system with user/room management and analytics
 - ✅ **Role-Based Access** - First user becomes admin, automatic role assignment
 - ✅ **Email Verification** - SMTP-based email verification for new user registrations
-- 🚧 **Progress Tracking** - MongoDB storage (in progress)
-- 🚧 **Achievements & Gamification** - Coming soon
+- ✅ **Progress Tracking** - MongoDB storage with sync API for authenticated users
+- ✅ **Multiplayer Mode** - Real-time typing games with Socket.IO
+- ✅ **Leaderboards** - Global and friend leaderboards with player statistics
+- 🚧 **Achievements & Gamification** - Badges and rewards system (coming soon)
 
 ## Tech Stack
 
@@ -42,8 +44,9 @@ A modern, production-ready touch typing practice website built with Next.js 15, 
 - **MongoDB 6.12** - NoSQL database
 - **Mongoose 8.9** - MongoDB ODM
 - **@auth/mongodb-adapter** - NextAuth MongoDB integration
+- **Socket.IO 4.8** - Real-time bidirectional communication for multiplayer
 - **Nodemailer 6.9** - SMTP email sending for verification
-- **Redis 4.7** - Caching and session management (optional)
+- **Redis 4.7** - Caching, session management, and real-time data
 - **bcryptjs 2.4** - Password hashing
 - **Zod 3.24** - Schema validation
 
@@ -364,11 +367,11 @@ npm run build
 - [x] Admin dashboard with user/room management
 - [x] Platform statistics and analytics with Chart.js
 - [x] MongoDB user data storage
-- [x] Progress tracking and history (local storage)
+- [x] Progress tracking and history (MongoDB with sync API)
 - [x] User profiles and settings
-- [ ] Cloud sync for authenticated users (planned)
+- [x] Cloud sync for authenticated users
+- [x] Leaderboards (global and friends)
 - [ ] Achievement system (planned)
-- [ ] Leaderboards (planned)
 
 ### Phase 4: SEO & Deployment ✅ Complete
 - [x] Full SEO optimization (metadata, OG tags, Twitter cards)
@@ -378,23 +381,33 @@ npm run build
 - [x] Docker & Docker Compose setup
 - [x] Production deployment ready
 
-### Phase 5: Advanced Features 📋 Planned
+### Phase 5: Multiplayer & Social ✅ Complete
+- [x] Real-time multiplayer typing games (Socket.IO)
+- [x] Room creation and management
+- [x] Online player list with presence tracking
+- [x] Global leaderboards
+- [x] Friend leaderboards
+- [x] Player statistics and rankings
+- [x] Quick match system
+- [x] Game lobby with chat
+
+### Phase 6: Advanced Features 📋 Planned
 - [ ] Custom text practice presets
 - [ ] Export typing data
-- [ ] Typing games
+- [ ] Additional typing games
 - [ ] Daily challenges
 - [ ] Streak tracking
-- [ ] Badges and rewards
+- [ ] Achievement badges and rewards system
 - [ ] Code snippet practice mode
 - [ ] Advanced analytics dashboard
 
-### Phase 6: Social & Gamification 💡 Future
-- [ ] Multiplayer typing races
-- [ ] Friend challenges
-- [ ] Social sharing
-- [ ] Global leaderboards
+### Phase 7: Enhanced Gamification 💡 Future
 - [ ] Team competitions
 - [ ] Live tournaments
+- [ ] Season rankings
+- [ ] Advanced matchmaking with ELO ratings
+- [ ] Spectator mode for tournaments
+- [ ] Replay system
 
 ## Performance
 
