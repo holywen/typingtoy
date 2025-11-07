@@ -18,22 +18,23 @@ jest.mock('@/lib/i18n/LanguageContext', () => ({
 
 describe('SocialShareButtons', () => {
   let windowOpenSpy: jest.SpyInstance;
+  const originalLocation = window.location;
 
   beforeEach(() => {
     // Mock window.open
     windowOpenSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
 
     // Mock window.location.origin
-    Object.defineProperty(window, 'location', {
-      value: {
-        origin: 'http://localhost:3000',
-      },
-      writable: true,
-    });
+    delete (window as any).location;
+    window.location = {
+      ...originalLocation,
+      origin: 'http://localhost:3000',
+    };
   });
 
   afterEach(() => {
     windowOpenSpy.mockRestore();
+    window.location = originalLocation;
     jest.clearAllMocks();
   });
 
