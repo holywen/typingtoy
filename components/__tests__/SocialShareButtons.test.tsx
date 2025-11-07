@@ -19,18 +19,6 @@ jest.mock('@/lib/i18n/LanguageContext', () => ({
 describe('SocialShareButtons', () => {
   let windowOpenSpy: jest.SpyInstance;
 
-  beforeAll(() => {
-    // Define window.location.origin as configurable so we can mock it
-    Object.defineProperty(window, 'location', {
-      value: {
-        ...window.location,
-        origin: 'http://localhost:3000',
-      },
-      writable: true,
-      configurable: true,
-    });
-  });
-
   beforeEach(() => {
     // Mock window.open
     windowOpenSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
