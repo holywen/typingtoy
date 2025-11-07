@@ -31,6 +31,9 @@ jobs:
       run: npm run lint
       continue-on-error: true
 
+    - name: Run build
+      run: npm run build
+
     - name: Run unit tests
       run: npm test -- --ci --coverage --maxWorkers=2
 
