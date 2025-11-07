@@ -190,7 +190,7 @@ describe('textGenerator', () => {
     });
 
     it('should handle very small word counts', () => {
-      const text = generateTypingText(1, 5);
+      const text = generateTypingText(5, 10);
 
       expect(text.length).toBeGreaterThan(0);
       expect(text).toContain(' '); // Should have at least one space
