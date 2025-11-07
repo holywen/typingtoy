@@ -14,6 +14,11 @@ export default {
     settings: '设置',
     reportIssues: '报告问题',
   },
+  social: {
+    shareTitle: '📢 与朋友分享盲打练习！',
+    shareText: '看看盲打练习 - 通过15节渐进式课程、速度测试和趣味游戏学习更快打字！🎯⌨️',
+    shareOn: '分享到',
+  },
   home: {
     title: '欢迎使用盲打练习！',
     description: '盲打练习包含15节课程、速度测试和游戏，您可以循序渐进地学习打字、监控自己的进度并享受乐趣！',

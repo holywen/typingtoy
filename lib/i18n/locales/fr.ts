@@ -14,6 +14,11 @@ export default {
     settings: 'Paramètres',
     reportIssues: 'Signaler des Problèmes',
   },
+  social: {
+    shareTitle: '📢 Partagez Typing Toy avec vos amis!',
+    shareText: 'Découvrez Typing Toy - Apprenez à taper plus vite avec 15 leçons progressives, des tests de vitesse et des jeux amusants! 🎯⌨️',
+    shareOn: 'Partager sur',
+  },
   home: {
     title: 'Bienvenue à l\'Étude de la Dactylographie!',
     description: 'L\'Étude de la Dactylographie contient 15 leçons, un test de vitesse et des jeux avec lesquels vous pouvez apprendre à taper étape par étape, surveiller vos propres progrès et vous amuser!',

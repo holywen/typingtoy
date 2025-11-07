@@ -14,6 +14,11 @@ export default {
     settings: '設定',
     reportIssues: '問題を報告',
   },
+  social: {
+    shareTitle: '📢 Typing Toyを友達と共有！',
+    shareText: 'Typing Toyをチェック - 15の段階的なレッスン、スピードテスト、楽しいゲームでタイピングを速く学ぼう！🎯⌨️',
+    shareOn: '共有する',
+  },
   home: {
     title: 'タッチタイピング練習へようこそ！',
     description: 'タッチタイピング練習には15のレッスン、スピードテスト、ゲームが含まれており、段階的にタイピングを学び、進捗を監視し、楽しむことができます！',
