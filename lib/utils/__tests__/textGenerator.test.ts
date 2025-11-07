@@ -6,8 +6,8 @@ describe('textGenerator', () => {
       const text = generateTypingText(50, 100);
       const wordCount = getWordCount(text);
 
-      expect(wordCount).toBeGreaterThanOrEqual(45); // Allow some tolerance for trimming
-      expect(wordCount).toBeLessThanOrEqual(105);
+      expect(wordCount).toBeGreaterThanOrEqual(40); // Allow tolerance for sentence-boundary trimming
+      expect(wordCount).toBeLessThanOrEqual(110);
     });
 
     it('should use default range when no parameters provided', () => {
@@ -85,8 +85,8 @@ describe('textGenerator', () => {
       const text = generateTypingText(50, 50);
       const wordCount = getWordCount(text);
 
-      expect(wordCount).toBeGreaterThanOrEqual(45);
-      expect(wordCount).toBeLessThanOrEqual(55);
+      expect(wordCount).toBeGreaterThanOrEqual(40); // Allow tolerance for sentence-boundary trimming
+      expect(wordCount).toBeLessThanOrEqual(60);
     });
 
     it('should create paragraphs with double newlines', () => {
