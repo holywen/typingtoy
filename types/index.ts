@@ -11,6 +11,7 @@ export interface TypingSession {
   keystrokes: Keystroke[];
   targetText: string;
   currentPosition: number;
+  completed?: boolean;
 }
 
 export interface TypingMetrics {
