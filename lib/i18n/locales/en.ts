@@ -14,6 +14,11 @@ export default {
     settings: 'Settings',
     reportIssues: 'Report Issues',
   },
+  social: {
+    shareTitle: '📢 Share Typing Toy with friends!',
+    shareText: 'Check out Typing Toy - Learn to type faster with 15 progressive lessons, speed tests, and fun games! 🎯⌨️',
+    shareOn: 'Share on',
+  },
   home: {
     title: 'Welcome to Typing Toy!',
     description: 'Typing Toy contains 15 lessons, a speed test and games from which you can learn to type step-by-step, monitor your own progress and have fun!',

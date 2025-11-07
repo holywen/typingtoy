@@ -14,6 +14,11 @@ export default {
     settings: 'Configuración',
     reportIssues: 'Reportar Problemas',
   },
+  social: {
+    shareTitle: '📢 ¡Comparte Typing Toy con amigos!',
+    shareText: '¡Mira Typing Toy - Aprende a escribir más rápido con 15 lecciones progresivas, pruebas de velocidad y juegos divertidos! 🎯⌨️',
+    shareOn: 'Compartir en',
+  },
   home: {
     title: '¡Bienvenido a Estudio de Mecanografía!',
     description: 'El Estudio de Mecanografía contiene 15 lecciones, una prueba de velocidad y juegos con los que puedes aprender a escribir paso a paso, monitorear tu propio progreso y divertirte!',

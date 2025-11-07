@@ -8,6 +8,7 @@ import { getUserSettings, updateSetting } from '@/lib/services/userSettings';
 import UserMenu from '@/components/UserMenu';
 import TipsBanner from '@/components/TipsBanner';
 import LanguageSelector from '@/components/LanguageSelector';
+import SocialShareButtons from '@/components/SocialShareButtons';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function Home() {
@@ -42,6 +43,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
+      {/* Social Share Buttons */}
+      <SocialShareButtons />
+
       {/* Tips Banner for unregistered users */}
       <TipsBanner />
 
