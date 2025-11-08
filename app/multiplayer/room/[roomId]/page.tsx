@@ -239,6 +239,49 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     router.push('/multiplayer');
   };
 
+  // Force leave room on page unload (refresh/close/navigate away)
+  useEffect(() => {
+    if (!roomId || !playerId || gameActive) return;
+
+    const handleBeforeUnload = () => {
+      const socket = getSocket();
+      if (socket?.connected) {
+        console.log('🚪 [BEFOREUNLOAD] Leaving room:', roomId);
+        // Synchronous leave event (best effort)
+        socket.emit('room:leave', { roomId });
+      }
+    };
+
+    // Also send leave event when navigating away (more reliable than beforeunload)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        const socket = getSocket();
+        if (socket?.connected) {
+          console.log('🚪 [VISIBILITY] Leaving room:', roomId);
+          socket.emit('room:leave', { roomId });
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup on component unmount (navigation away)
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      // Send leave event when component unmounts (e.g., navigating back to lobby)
+      if (!gameActive) {
+        const socket = getSocket();
+        if (socket?.connected) {
+          console.log('🚪 [UNMOUNT] Leaving room:', roomId);
+          socket.emit('room:leave', { roomId });
+        }
+      }
+    };
+  }, [roomId, playerId, gameActive]);
+
   const handleToggleReady = () => {
     const player = room?.players.find(p => p.playerId === playerId);
     const newReadyState = !player?.isReady;
