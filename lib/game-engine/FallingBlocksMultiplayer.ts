@@ -1,13 +1,14 @@
 // Falling Blocks Multiplayer Game Engine
 
 import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
-import { 
-  GameState, 
-  SerializedGameState, 
+import {
+  GameState,
+  SerializedGameState,
   GameSettings,
-  serializeGameState 
+  serializeGameState
 } from './GameState';
 import { PlayerInput, InputResult, PlayerKeystroke } from './PlayerState';
+import { lessonsData } from '@/lib/data/lessons';
 import { GameType } from '@/types/multiplayer';
 
 /**
@@ -45,6 +46,8 @@ export interface FallingBlocksPlayerData {
   activeTargetBlockId?: number;  // Block they're currently typing
   blocksDestroyed: number;
   blocksMissed: number;
+  errorCount: number;             // Number of incorrect keystrokes
+  maxErrors: number;              // Game over threshold for errors
 }
 
 /**
@@ -93,6 +96,8 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
       const playerData: FallingBlocksPlayerData = {
         blocksDestroyed: 0,
         blocksMissed: 0,
+        errorCount: 0,
+        maxErrors: 10, // Game over after 10 typing errors
       };
       this.updatePlayerState(playerId, {
         gameSpecificData: playerData,
@@ -104,13 +109,20 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
    * Get characters based on lesson or settings
    */
   private getCharactersFromLesson(): string[] {
-    if (this.settings.lessonId) {
-      // TODO: Load from lesson data
-      // For now, use home row
-      return ['a', 's', 'd', 'f', 'j', 'k', 'l', ';'];
+    const customSettings = this.settings.customRules as { lessonNumber?: number } | undefined;
+
+    console.log(`🎯 FallingBlocks getCharactersFromLesson: lessonNumber=${customSettings?.lessonNumber}`);
+
+    if (customSettings?.lessonNumber) {
+      const lesson = lessonsData.find(l => l.lessonNumber === customSettings.lessonNumber);
+      if (lesson && lesson.focusKeys.length > 0) {
+        console.log(`📚 Using lesson ${customSettings.lessonNumber} keys:`, lesson.focusKeys);
+        return lesson.focusKeys;
+      }
     }
-    
+
     // All lowercase letters
+    console.log(`🔤 Using all 26 keys`);
     return 'abcdefghijklmnopqrstuvwxyz'.split('');
   }
   
@@ -193,18 +205,18 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     
     // Update block positions
     const blocksToRemove: number[] = [];
-    
+
     for (const block of state.blocks) {
       block.y += block.speed * (deltaTime / 16.67); // Normalize to 60 FPS
-      
+
       // Check if block reached bottom
       if (block.y >= 100) {
         blocksToRemove.push(block.id);
         state.totalBlocksMissed++;
 
-        // Penalize the player who owns this block
+        // Penalize the player who owns this block (if still active)
         const playerState = this.getPlayerState(block.playerId);
-        if (playerState) {
+        if (playerState && !playerState.isFinished) {
           const playerData = playerState.gameSpecificData as FallingBlocksPlayerData;
           playerData.blocksMissed++;
 
@@ -219,15 +231,23 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     // Remove blocks that reached bottom
     state.blocks = state.blocks.filter(b => !blocksToRemove.includes(b.id));
     
+    // Check if all players finished
+    const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
+    if (allFinished) {
+      console.log(`🏁 Falling Blocks ended - all players finished`);
+      this.gameState.status = 'finished';
+      return;
+    }
+
     // Increase difficulty over time
     const minutesElapsed = this.gameState.elapsedTime / 60000;
     const newLevel = Math.floor(minutesElapsed / 0.5) + 1; // Level up every 30 seconds
-    
+
     if (newLevel !== this.gameState.players.values().next().value?.level) {
       for (const [playerId] of this.gameState.players) {
         this.updatePlayerState(playerId, { level: newLevel });
       }
-      
+
       // Adjust spawn rate and speed
       state.spawnInterval = Math.max(1000, 2000 - newLevel * 100);
       state.gameSpeed = 1 + newLevel * 0.1;
@@ -258,7 +278,18 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     );
     
     if (matchingBlocks.length === 0) {
-      // Incorrect key - update metrics
+      // Incorrect key - increment error counter
+      playerData.errorCount++;
+
+      // Check if player exceeded max errors
+      if (playerData.errorCount >= playerData.maxErrors) {
+        console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${playerData.errorCount})`);
+        this.updatePlayerState(playerId, {
+          isFinished: true,
+        });
+      }
+
+      // Update metrics
       return this.handleKeystroke(playerId, {
         ...keystroke,
         isCorrect: false,

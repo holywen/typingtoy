@@ -103,17 +103,23 @@ export class RoomManager {
       return { success: false, error: 'Incorrect password' };
     }
 
-    // Check if room is full
-    if (room.players.length >= room.maxPlayers) {
-      return { success: false, error: 'Room is full' };
-    }
-
-    // Check if player already in room
+    // Check if player already in room (before checking if full)
     const existingPlayer = room.players.find(p => p.playerId === params.playerId);
     if (existingPlayer) {
+      console.log(`👤 Player ${params.playerName} already in room, reconnecting`);
       existingPlayer.isConnected = true;
       await this.updateRoom(room);
       return { success: true, room };
+    }
+
+    // Check if room is full (after checking existing player)
+    console.log(`🚪 Join check: ${params.playerName} trying to join room ${params.roomId}`);
+    console.log(`   Current players: ${room.players.length}/${room.maxPlayers}`);
+    console.log(`   Players:`, room.players.map(p => `${p.displayName} (${p.playerId})`));
+
+    if (room.players.length >= room.maxPlayers) {
+      console.log(`❌ Room is full: ${room.players.length} >= ${room.maxPlayers}`);
+      return { success: false, error: 'Room is full' };
     }
 
     // Add player

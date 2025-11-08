@@ -7,7 +7,7 @@ import { ProfanityFilter } from '@/lib/utils/profanityFilter';
 
 export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void {
   // Send chat message
-  socket.on('chat:send', async (data) => {
+  socket.on('chat:send', async (data, callback) => {
     console.log('💬 chat:send received:', data);
     try {
       const { playerId, displayName } = socket.data;
@@ -17,6 +17,7 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
       // Validate message
       if (!message || message.trim().length === 0) {
         console.log('⚠️  Empty message, ignoring');
+        callback?.({ success: false, error: 'Empty message' });
         return;
       }
 
@@ -25,6 +26,7 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
           code: 'TOO_LONG',
           message: 'Message too long (max 200 characters)',
         });
+        callback?.({ success: false, error: 'Message too long (max 200 characters)' });
         return;
       }
 
@@ -35,6 +37,7 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
           code: 'RATE_LIMIT',
           message: 'Too many messages, please slow down',
         });
+        callback?.({ success: false, error: 'Too many messages, please slow down' });
         return;
       }
 
@@ -45,6 +48,7 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
           code: 'MUTED',
           message: 'You are temporarily muted',
         });
+        callback?.({ success: false, error: 'You are temporarily muted' });
         return;
       }
 
@@ -57,6 +61,7 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
           code: 'BAD_WORD',
           message: 'Please keep chat respectful. You have been temporarily muted.',
         });
+        callback?.({ success: false, error: 'Please keep chat respectful. You have been temporarily muted.' });
         return;
       }
 
@@ -86,12 +91,16 @@ export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void
         io.to(roomId).emit('chat:message', chatMessage);
       }
       console.log('✅ Chat message broadcast successfully');
+
+      // Send success acknowledgment to client
+      callback?.({ success: true });
     } catch (error) {
       console.error('❌ Error handling chat message:', error);
       socket.emit('chat:error', {
         code: 'INTERNAL_ERROR',
         message: 'Failed to send message',
       });
+      callback?.({ success: false, error: 'Failed to send message' });
     }
   });
 }

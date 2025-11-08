@@ -24,6 +24,8 @@ export default function FallingWordsGame() {
   const [words, setWords] = useState<FallingWord[]>([]);
   const [chars, setChars] = useState<string[]>([]);
   const [wordList, setWordList] = useState<string[]>([]);
+  const [errorCount, setErrorCount] = useState(0);
+  const [maxErrors] = useState(10);
   const wordIdRef = useRef(0);
   const gameLoopRef = useRef<number | undefined>(undefined);
 
@@ -125,6 +127,7 @@ export default function FallingWordsGame() {
     setScore(0);
     setLevel(1);
     setWords([]);
+    setErrorCount(0);
   }, []);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -150,6 +153,7 @@ export default function FallingWordsGame() {
       });
 
       if (matchIndex !== -1) {
+        // Match found
         const updatedWords = [...prev];
         const matchedWord = { ...updatedWords[matchIndex] };
         matchedWord.typed += key;
@@ -172,11 +176,19 @@ export default function FallingWordsGame() {
         }
 
         return updatedWords;
+      } else {
+        // No match found - increment error count
+        setErrorCount(prevErrors => {
+          const newErrorCount = prevErrors + 1;
+          if (newErrorCount >= maxErrors) {
+            setGameOver(true);
+          }
+          return newErrorCount;
+        });
+        return prev;
       }
-
-      return prev;
     });
-  }, [gameStarted, gameOver, startGame]);
+  }, [gameStarted, gameOver, startGame, maxErrors]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -271,6 +283,9 @@ export default function FallingWordsGame() {
         </div>
         <div className="text-2xl font-bold">
           {t.games?.level || 'Level'}: {level}
+        </div>
+        <div className="text-2xl font-bold">
+          {t.games?.errors || 'Errors'}: {errorCount}/{maxErrors}
         </div>
       </div>
 

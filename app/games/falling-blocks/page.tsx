@@ -22,6 +22,8 @@ export default function FallingBlocksGame() {
   const [gameOver, setGameOver] = useState(false);
   const [blocks, setBlocks] = useState<FallingBlock[]>([]);
   const [chars, setChars] = useState<string[]>([]);
+  const [errorCount, setErrorCount] = useState(0);
+  const [maxErrors] = useState(10);
   const blockIdRef = useRef(0);
   const gameLoopRef = useRef<number | undefined>(undefined);
 
@@ -93,6 +95,7 @@ export default function FallingBlocksGame() {
     setScore(0);
     setLevel(1);
     setBlocks([]);
+    setErrorCount(0);
   }, []);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -106,9 +109,15 @@ export default function FallingBlocksGame() {
     if (!gameStarted || gameOver) return;
 
     const key = e.key.toLowerCase();
+
+    // Ignore non-letter keys
+    if (key.length !== 1 || !key.match(/[a-z;]/)) return;
+
+    // Check if there's a matching block BEFORE updating state
     setBlocks(prev => {
       const hitIndex = prev.findIndex(block => block.char === key);
       if (hitIndex !== -1) {
+        // Match found - update score
         setScore(s => {
           const newScore = s + 10;
           // Level up every 100 points
@@ -118,10 +127,19 @@ export default function FallingBlocksGame() {
           return newScore;
         });
         return prev.filter((_, i) => i !== hitIndex);
+      } else {
+        // No match found - increment error count
+        setErrorCount(prevErrors => {
+          const newErrorCount = prevErrors + 1;
+          if (newErrorCount >= maxErrors) {
+            setGameOver(true);
+          }
+          return newErrorCount;
+        });
+        return prev;
       }
-      return prev;
     });
-  }, [gameStarted, gameOver, startGame]);
+  }, [gameStarted, gameOver, startGame, maxErrors]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -216,6 +234,9 @@ export default function FallingBlocksGame() {
         </div>
         <div className="text-2xl font-bold">
           {t.games?.level || 'Level'}: {level}
+        </div>
+        <div className="text-2xl font-bold">
+          {t.games?.errors || 'Errors'}: {errorCount}/{maxErrors}
         </div>
       </div>
 

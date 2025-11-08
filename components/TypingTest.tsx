@@ -32,7 +32,6 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
   const [stats, setStats] = useState({ wpm: 0, accuracy: 100, timeElapsed: 0 });
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const statsIntervalRef = useRef<number | undefined>(undefined);
   const textDisplayRef = useRef<HTMLDivElement>(null);
   const currentCharRef = useRef<HTMLSpanElement>(null);
@@ -72,9 +71,13 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
     }
   }, [isStarted, isCompleted, session]);
 
-  // Handle keyboard input
+  // Handle keyboard input on the text display div
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (isCompleted) {
+        return;
+      }
+
       // Start session on first keystroke
       if (!isStarted) {
         setIsStarted(true);
@@ -92,21 +95,62 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
 
       // Handle backspace
       if (key === 'Backspace') {
-        return; // Let default behavior handle it
+        e.preventDefault();
+        if (currentInput.length > 0) {
+          setCurrentInput(prev => prev.slice(0, -1));
+          setSession(prev => ({
+            ...prev,
+            keystrokes: prev.keystrokes.slice(0, -1),
+            currentPosition: Math.max(0, prev.currentPosition - 1),
+          }));
+        }
+        return;
       }
 
       // Handle Enter key for newlines
       if (key === 'Enter') {
+        e.preventDefault();
         // Check if next character in target text is a newline
         const nextChar = targetText[currentInput.length];
         if (nextChar === '\n') {
-          // Allow Enter if it's expected
-          return;
-        } else {
-          // Prevent Enter if not expected
-          e.preventDefault();
-          return;
+          // Process newline as a character
+          const keystroke = trackKeystroke('\n', '\n', performance.now());
+
+          if (soundEnabled) {
+            playKeystrokeSound(keystroke.correct);
+          }
+
+          const newInput = currentInput + '\n';
+          setCurrentInput(newInput);
+          setSession((prev) => ({
+            ...prev,
+            keystrokes: [...prev.keystrokes, keystroke],
+            currentPosition: newInput.length,
+          }));
+
+          // Check if completed
+          if (newInput.length === targetText.length) {
+            setIsCompleted(true);
+            if (soundEnabled) {
+              playCompletionSound();
+            }
+            const finalSession = {
+              ...session,
+              keystrokes: [...session.keystrokes, keystroke],
+              currentPosition: newInput.length,
+            };
+            const metrics = calculateMetrics(finalSession);
+            setStats({
+              wpm: Math.round(metrics.netWPM),
+              accuracy: Math.round(metrics.accuracy),
+              timeElapsed: metrics.duration,
+            });
+            if (onComplete) {
+              onComplete(finalSession);
+            }
+          }
         }
+        return;
       }
 
       // Prevent default for Tab
@@ -115,53 +159,36 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         return;
       }
 
-      // Ignore other special keys except space
-      if (key.length > 1 && key !== ' ') {
+      // Process printable characters and space
+      if (key.length === 1 || key === ' ') {
         e.preventDefault();
-        return;
-      }
-    },
-    [isStarted, onStart, currentInput.length, targetText]
-  );
 
-  // Handle input change
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
-      const prevLength = currentInput.length;
-      const newLength = value.length;
-
-      // Typing forward
-      if (newLength > prevLength) {
-        const newChar = value[newLength - 1];
-        const targetChar = targetText[newLength - 1];
-
+        const newChar = key;
+        const targetChar = targetText[currentInput.length];
         const keystroke = trackKeystroke(newChar, targetChar, performance.now());
 
-        // Play sound feedback
         if (soundEnabled) {
           playKeystrokeSound(keystroke.correct);
         }
 
+        const newInput = currentInput + newChar;
+        setCurrentInput(newInput);
         setSession((prev) => ({
           ...prev,
           keystrokes: [...prev.keystrokes, keystroke],
-          currentPosition: newLength,
+          currentPosition: newInput.length,
         }));
 
         // Check if completed
-        if (newLength === targetText.length) {
+        if (newInput.length === targetText.length) {
           setIsCompleted(true);
-
-          // Play completion sound
           if (soundEnabled) {
             playCompletionSound();
           }
-
           const finalSession = {
             ...session,
             keystrokes: [...session.keystrokes, keystroke],
-            currentPosition: newLength,
+            currentPosition: newInput.length,
           };
           const metrics = calculateMetrics(finalSession);
           setStats({
@@ -174,15 +201,14 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
           }
         }
       }
-
-      setCurrentInput(value);
     },
-    [currentInput, targetText, session, onComplete]
+    [isStarted, isCompleted, onStart, currentInput, targetText, session, onComplete, soundEnabled]
   );
 
-  // Auto-focus input
+
+  // Auto-focus text display area
   useEffect(() => {
-    inputRef.current?.focus();
+    textDisplayRef.current?.focus();
   }, []);
 
   // Auto-scroll to current character
@@ -209,60 +235,136 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
     }
   }, [currentInput]);
 
-  // Render text with highlighting
+  // Render text with alternating lines (target line, then user input line)
   const renderText = () => {
-    return targetText.split('').map((char, index) => {
-      let className = 'text-2xl ';
-      const isCurrent = index === currentInput.length;
-      const isNewline = char === '\n';
+    // Split text into lines (treating each newline as a line separator)
+    const lines: string[] = [];
+    let currentLine = '';
 
-      if (index < currentInput.length) {
-        // Already typed
-        if (currentInput[index] === char) {
-          className += 'text-green-600 dark:text-green-400';
-        } else {
-          className += 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30';
-        }
-      } else if (isCurrent) {
-        // Current character
-        className += 'text-gray-900 dark:text-white bg-blue-200 dark:bg-blue-900/50';
+    for (let i = 0; i < targetText.length; i++) {
+      if (targetText[i] === '\n') {
+        lines.push(currentLine);
+        currentLine = '';
       } else {
-        // Not yet typed
-        className += 'text-gray-400 dark:text-gray-600';
+        currentLine += targetText[i];
       }
+    }
+    // Add the last line if it exists
+    if (currentLine.length > 0 || targetText[targetText.length - 1] === '\n') {
+      lines.push(currentLine);
+    }
 
-      // Handle different character types
-      let displayChar;
-      if (char === ' ') {
-        displayChar = '\u00A0'; // Non-breaking space
-      } else if (isNewline) {
-        // Display newline as a special symbol with line break
+    // Calculate which line we're currently on based on user input
+    let charCount = 0;
+    let currentLineIndex = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (currentInput.length <= charCount + lines[i].length) {
+        currentLineIndex = i;
+        break;
+      }
+      charCount += lines[i].length + 1; // +1 for newline character
+    }
+
+    // Render each line pair (target + user input)
+    const result: React.ReactElement[] = [];
+    charCount = 0;
+
+    lines.forEach((line, lineIndex) => {
+      const lineStartIndex = charCount;
+      const lineEndIndex = charCount + line.length;
+
+      // Render target line
+      const targetLineChars = line.split('').map((char, charIndexInLine) => {
+        const globalIndex = lineStartIndex + charIndexInLine;
+        let className = 'text-xl ';
+        const isCurrent = globalIndex === currentInput.length;
+
+        if (globalIndex < currentInput.length) {
+          // Already typed - show in gray (not colored, we'll color the input line)
+          className += 'text-gray-400 dark:text-gray-500';
+        } else if (isCurrent) {
+          // Current character
+          className += 'text-gray-900 dark:text-white bg-blue-200 dark:bg-blue-900/50';
+        } else {
+          // Not yet typed
+          className += 'text-gray-400 dark:text-gray-600';
+        }
+
+        const displayChar = char === ' ' ? '\u00A0' : char;
+
         return (
-          <span key={index}>
-            <span
-              className={`${className} inline-flex items-center px-1 rounded border border-current`}
-              ref={isCurrent ? currentCharRef : null}
-              title="Press Enter"
-            >
-              ↵
-            </span>
-            <br />
+          <span
+            key={`target-${lineIndex}-${charIndexInLine}`}
+            className={className}
+            ref={isCurrent ? currentCharRef : null}
+          >
+            {displayChar}
           </span>
         );
-      } else {
-        displayChar = char;
-      }
+      });
 
-      return (
-        <span
-          key={index}
-          className={className}
-          ref={isCurrent ? currentCharRef : null}
-        >
-          {displayChar}
-        </span>
+      // Render user input line
+      const userInputForLine = currentInput.slice(
+        lineStartIndex,
+        Math.min(lineEndIndex, currentInput.length)
       );
+
+      const inputLineChars = line.split('').map((targetChar, charIndexInLine) => {
+        const globalIndex = lineStartIndex + charIndexInLine;
+
+        if (globalIndex >= currentInput.length) {
+          // Not typed yet - show placeholder
+          return (
+            <span
+              key={`input-${lineIndex}-${charIndexInLine}`}
+              className="text-xl text-transparent"
+            >
+              {targetChar === ' ' ? '\u00A0' : targetChar}
+            </span>
+          );
+        }
+
+        const typedChar = currentInput[globalIndex];
+        const isCorrect = typedChar === targetChar;
+        let className = 'text-xl ';
+
+        if (isCorrect) {
+          className += 'text-green-600 dark:text-green-400 font-semibold';
+        } else {
+          className += 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 font-semibold';
+        }
+
+        const displayChar = typedChar === ' ' ? '\u00A0' : typedChar;
+
+        return (
+          <span
+            key={`input-${lineIndex}-${charIndexInLine}`}
+            className={className}
+          >
+            {displayChar}
+          </span>
+        );
+      });
+
+      // Add target line
+      result.push(
+        <div key={`target-line-${lineIndex}`} className="font-mono leading-relaxed">
+          {targetLineChars}
+        </div>
+      );
+
+      // Add user input line (always show, even if empty)
+      result.push(
+        <div key={`input-line-${lineIndex}`} className="font-mono leading-relaxed mb-4">
+          {inputLineChars}
+        </div>
+      );
+
+      // Update character count (add line length + 1 for newline)
+      charCount += line.length + 1;
     });
+
+    return result;
   };
 
   const restart = () => {
@@ -276,7 +378,7 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
     setIsStarted(false);
     setIsCompleted(false);
     setStats({ wpm: 0, accuracy: 100, timeElapsed: 0 });
-    inputRef.current?.focus();
+    textDisplayRef.current?.focus();
   };
 
   const toggleSound = () => {
@@ -327,35 +429,26 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         </div>
       </div>
 
-      {/* Text Display */}
-      <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg mb-8">
+      {/* Text Display with Input */}
+      <div className="bg-white dark:bg-gray-800 p-6 md:p-8 rounded-lg shadow-lg mb-6 md:mb-8 border-2 border-blue-500 dark:border-blue-600">
         <div
           ref={textDisplayRef}
-          className="font-mono leading-relaxed break-words overflow-y-auto"
+          className="font-mono break-words overflow-y-auto focus:outline-none"
           style={{
-            height: 'calc(2.5rem * 3 * 1.625)', // 3 lines: text-2xl (2.5rem) * line-height (1.625) * 3 lines
-            maxHeight: 'calc(2.5rem * 3 * 1.625)',
+            minHeight: '200px',
+            maxHeight: '400px',
           }}
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
         >
           {renderText()}
         </div>
+        {!isStarted && !isCompleted && (
+          <div className="mt-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+            {t.typing.clickToStart}
+          </div>
+        )}
       </div>
-
-      {/* Input Area */}
-      <textarea
-        ref={inputRef}
-        value={currentInput}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        disabled={isCompleted}
-        className="w-full p-4 text-lg border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none"
-        placeholder={isStarted ? '' : t.typing.startTyping}
-        autoComplete="off"
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck="false"
-        rows={3}
-      />
 
       {/* Completion Message */}
       {isCompleted && (
@@ -406,13 +499,6 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
               <HandDiagram currentChar={currentChar} hand="right" />
             </div>
           )}
-        </div>
-      )}
-
-      {/* Instructions */}
-      {!isStarted && !isCompleted && (
-        <div className="mt-4 text-center text-gray-600 dark:text-gray-400">
-          <p>{t.typing.clickToStart}</p>
         </div>
       )}
     </div>

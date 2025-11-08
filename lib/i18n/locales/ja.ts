@@ -242,6 +242,7 @@ export default {
     lives: 'ライフ',
     time: '時間',
     streak: '連続',
+    errors: 'エラー',
     bestStreak: '最高連続',
     distance: '距離',
     youWon: '勝利！',

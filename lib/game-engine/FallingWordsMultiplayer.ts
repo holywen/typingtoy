@@ -5,6 +5,7 @@ import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
 import { PlayerInput, InputResult } from './PlayerState';
 import { GameSettings, SerializedGameState, serializeGameState } from './GameState';
 import { GameType } from '@/types/multiplayer';
+import { lessonsData } from '@/lib/data/lessons';
 
 /**
  * Falling word data structure
@@ -45,6 +46,8 @@ export interface FallingWordsPlayerData {
   maxLostWords: number;              // Game over threshold
   completedWordIds: Set<number>;    // IDs of words this player has completed
   lostWordIds: Set<number>;         // IDs of words this player has lost
+  errorCount: number;                // Number of typing errors
+  maxErrors: number;                 // Game over threshold for errors
 }
 
 /**
@@ -76,8 +79,24 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
   }
 
   protected initGame(): void {
-    const customSettings = this.settings.customRules as { characters?: string[] } | undefined;
-    const characters = customSettings?.characters || 'abcdefghijklmnopqrstuvwxyz'.split('');
+    const customSettings = this.settings.customRules as { characters?: string[]; lessonNumber?: number } | undefined;
+
+    console.log(`🎯 FallingWords initGame: lessonNumber=${customSettings?.lessonNumber}`);
+
+    // Get character set based on lesson selection
+    let characters: string[];
+    if (customSettings?.lessonNumber) {
+      const lesson = lessonsData.find(l => l.lessonNumber === customSettings.lessonNumber);
+      characters = lesson && lesson.focusKeys.length > 0 ? lesson.focusKeys : 'abcdefghijklmnopqrstuvwxyz'.split('');
+      console.log(`📚 Using lesson ${customSettings.lessonNumber} keys:`, characters);
+    } else if (customSettings?.characters) {
+      characters = customSettings.characters;
+      console.log(`🔤 Using custom characters:`, characters);
+    } else {
+      characters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+      console.log(`🔤 Using all 26 keys`);
+    }
+
     const maxLostWords = 5; // Lose after 5 words fall off screen
 
     // Generate word pool using seeded RNG for consistency
@@ -109,6 +128,8 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
         maxLostWords,
         completedWordIds: new Set(),
         lostWordIds: new Set(),
+        errorCount: 0,
+        maxErrors: 10, // Game over after 10 typing errors
       };
 
       playerState.gameSpecificData = playerData;
@@ -374,12 +395,19 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
             success: true,
           };
         } else {
-          // Wrong character - cancel current word
+          // Wrong character - cancel current word and increment error count
           playerData.currentWordId = null;
           playerData.typedProgress = '';
+          playerData.errorCount++;
           playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
-          console.log(`❌ ${playerState.displayName} made mistake, cancelled word`);
+          // Check if player exceeded max errors
+          if (playerData.errorCount >= playerData.maxErrors) {
+            console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${playerData.errorCount})`);
+            playerState.isFinished = true;
+          } else {
+            console.log(`❌ ${playerState.displayName} made mistake, cancelled word (errors: ${playerData.errorCount}/${playerData.maxErrors})`);
+          }
 
           return {
             success: false,
@@ -437,8 +465,15 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
       };
     }
 
-    // No matching word found
+    // No matching word found - increment error count
+    playerData.errorCount++;
     playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
+
+    // Check if player exceeded max errors
+    if (playerData.errorCount >= playerData.maxErrors) {
+      console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${playerData.errorCount})`);
+      playerState.isFinished = true;
+    }
 
     return {
       success: false,

@@ -242,6 +242,7 @@ export default {
     lives: 'ชีวิต',
     time: 'เวลา',
     streak: 'ต่อเนื่อง',
+    errors: 'ข้อผิดพลาด',
     bestStreak: 'ต่อเนื่องสูงสุด',
     distance: 'ระยะทาง',
     youWon: 'คุณชนะ!',

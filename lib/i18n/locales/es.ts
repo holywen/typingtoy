@@ -242,6 +242,7 @@ export default {
     lives: 'Vidas',
     time: 'Tiempo',
     streak: 'Racha',
+    errors: 'Errores',
     bestStreak: 'Mejor Racha',
     distance: 'Distancia',
     youWon: '¡Ganaste!',

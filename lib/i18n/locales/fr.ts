@@ -242,6 +242,7 @@ export default {
     lives: 'Vies',
     time: 'Temps',
     streak: 'Série',
+    errors: 'Erreurs',
     bestStreak: 'Meilleure Série',
     distance: 'Distance',
     youWon: 'Vous Avez Gagné !',

@@ -41,7 +41,8 @@ export default function BlinkGame() {
     const newChar = getRandomChar();
     setCurrentChar(newChar);
     setDisplayChar(true);
-    setTimeLeft(Math.max(1000, 2000 - level * 100)); // Decrease time as level increases
+    const timeLimit = Math.max(1000, 2000 - level * 100); // Decrease time as level increases
+    setTimeLeft(timeLimit);
   }, [getRandomChar, level]);
 
   useEffect(() => {
@@ -101,6 +102,9 @@ export default function BlinkGame() {
       // Wrong key (only count letter keys)
       setStreak(0);
       setScore(s => Math.max(0, s - 5)); // Lose 5 points for wrong key
+
+      // Penalty: Reduce current remaining time immediately
+      setTimeLeft(prev => Math.max(0, prev - 300)); // Lose 300ms immediately
     }
   }, [gameStarted, gameOver, currentChar, score, streak, bestStreak, nextRound, startGame]);
 

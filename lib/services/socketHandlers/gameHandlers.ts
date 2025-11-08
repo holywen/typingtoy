@@ -33,17 +33,24 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
     console.log(`🎮 Starting ${gameType} game for room ${roomId}`);
 
     // Create game instance based on game type
-    const roomSettings = room.settings as { customRules?: Record<string, any> } | undefined;
-    const customRulesSettings = roomSettings?.customRules as { totalChars?: number; charTimeLimit?: number } | undefined;
+    const roomSettings = room.settings as { lessonNumber?: number; customRules?: Record<string, any> } | undefined;
+    const customRulesSettings = roomSettings?.customRules as { totalChars?: number; charTimeLimit?: number; lessonNumber?: number } | undefined;
     const gameConfig = {
       lessonId: room.settings?.lessonId,
       difficulty: room.settings?.difficulty as 'easy' | 'medium' | 'hard' | 'expert' | undefined,
       timeLimit: room.settings?.timeLimit || 120, // Default 2 minutes
       customRules: {
+        lessonNumber: roomSettings?.lessonNumber || customRulesSettings?.lessonNumber,
         totalChars: customRulesSettings?.totalChars || 50, // For Blink
         charTimeLimit: customRulesSettings?.charTimeLimit || 2000, // For Blink (2 seconds per char)
       }
     };
+
+    console.log(`📚 Game config for ${gameType}:`, {
+      lessonNumber: gameConfig.customRules?.lessonNumber,
+      totalChars: gameConfig.customRules?.totalChars,
+      charTimeLimit: gameConfig.customRules?.charTimeLimit,
+    });
 
     const playerList = room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName }));
     const seed = room.settings?.seed || Date.now();
@@ -171,14 +178,23 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
 
       // Create game instance based on game type
       const gameType = room.gameType || 'falling-blocks';
-      const roomSettings = room.settings as { lessonId?: number; difficulty?: string; timeLimit?: number; totalChars?: number; charTimeLimit?: number; seed?: number } | undefined;
+      const roomSettings = room.settings as { lessonId?: number; lessonNumber?: number; difficulty?: string; timeLimit?: number; totalChars?: number; charTimeLimit?: number; seed?: number } | undefined;
       const gameConfig = {
         lessonId: roomSettings?.lessonId,
         difficulty: roomSettings?.difficulty as 'easy' | 'medium' | 'hard' | 'expert' | undefined,
         timeLimit: roomSettings?.timeLimit || 120, // Default 2 minutes
-        totalChars: roomSettings?.totalChars || 50, // For Blink
-        charTimeLimit: roomSettings?.charTimeLimit || 2000, // For Blink
+        customRules: {
+          lessonNumber: roomSettings?.lessonNumber,
+          totalChars: roomSettings?.totalChars || 50, // For Blink
+          charTimeLimit: roomSettings?.charTimeLimit || 2000, // For Blink
+        },
       };
+
+      console.log(`📚 Game config for ${gameType} (from game:start):`, {
+        lessonNumber: gameConfig.customRules?.lessonNumber,
+        totalChars: gameConfig.customRules?.totalChars,
+        charTimeLimit: gameConfig.customRules?.charTimeLimit,
+      });
 
       const playerList = room.players.map(p => ({ playerId: p.playerId, displayName: p.displayName }));
       const seed = roomSettings?.seed || Date.now();

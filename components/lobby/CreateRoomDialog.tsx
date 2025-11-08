@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { GameType } from '@/types/multiplayer';
 import { emitSocketEvent } from '@/lib/services/socketClient';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { lessonsData } from '@/lib/data/lessons';
 
 interface CreateRoomDialogProps {
   gameType: GameType;
@@ -20,6 +21,7 @@ export default function CreateRoomDialog({ gameType, playerId, displayName, onCl
   const [password, setPassword] = useState('');
   const [maxPlayers, setMaxPlayers] = useState(4);
   const [isPrivate, setIsPrivate] = useState(false);
+  const [selectedLesson, setSelectedLesson] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +39,9 @@ export default function CreateRoomDialog({ gameType, playerId, displayName, onCl
       roomName: roomName.trim(),
       password: isPrivate ? password : undefined,
       maxPlayers,
-      settings: {},
+      settings: {
+        lessonNumber: selectedLesson,
+      },
     }, (response) => {
       if (response.success) {
         router.push(`/multiplayer/room/${response.roomId}`);
@@ -95,6 +99,31 @@ export default function CreateRoomDialog({ gameType, playerId, displayName, onCl
                 </option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t.games?.selectLesson || 'Select Lesson (Optional)'}
+            </label>
+            <select
+              value={selectedLesson ?? ''}
+              onChange={(e) => setSelectedLesson(e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">
+                {t.games?.allKeys || 'All Keys'}
+              </option>
+              {lessonsData
+                .filter((lesson) => lesson.lessonNumber <= 14)
+                .map((lesson) => (
+                  <option key={lesson.lessonNumber} value={lesson.lessonNumber}>
+                    Lesson {lesson.lessonNumber}: {lesson.title}
+                  </option>
+                ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {t.games?.selectLesson ? 'Limit characters to lesson keys only' : 'Limit characters to specific lesson keys only'}
+            </p>
           </div>
 
           <div>

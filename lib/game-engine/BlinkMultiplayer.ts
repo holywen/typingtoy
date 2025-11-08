@@ -4,6 +4,7 @@
 import { BaseMultiplayerGame, PlayerInfo } from './BaseMultiplayerGame';
 import { PlayerInput, InputResult } from './PlayerState';
 import { GameSettings, SerializedGameState, serializeGameState } from './GameState';
+import { lessonsData } from '@/lib/data/lessons';
 
 /**
  * Blink-specific game state
@@ -32,7 +33,7 @@ export interface BlinkPlayerData {
   timeouts: number;               // Number of timed-out characters
   firstAnswers: number;           // Number of times answered first
   currentCharIndex: number;       // Each player's position in sequence
-  charStartTime: number;          // Each player's character start time
+  charStartTime: number;          // Each player's character start time (adjusted on errors for time penalty)
   currentChar?: string;           // Current character for this player (only in serialized state)
 }
 
@@ -66,12 +67,24 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
   }
 
   protected initGame(): void {
-    const customSettings = this.settings.customRules as { totalChars?: number; charTimeLimit?: number } | undefined;
+    const customSettings = this.settings.customRules as { totalChars?: number; charTimeLimit?: number; lessonNumber?: number } | undefined;
     const totalChars = customSettings?.totalChars || 50; // Default 50 characters
     const timeLimit = customSettings?.charTimeLimit || 2000; // Default 2 seconds per char
 
+    console.log(`🎯 Blink initGame: lessonNumber=${customSettings?.lessonNumber}`);
+
+    // Get character set based on lesson selection
+    let chars: string[];
+    if (customSettings?.lessonNumber) {
+      const lesson = lessonsData.find(l => l.lessonNumber === customSettings.lessonNumber);
+      chars = lesson ? lesson.focusKeys : 'abcdefghijklmnopqrstuvwxyz'.split('');
+      console.log(`📚 Using lesson ${customSettings.lessonNumber} keys:`, chars);
+    } else {
+      chars = 'abcdefghijklmnopqrstuvwxyz'.split('');
+      console.log(`🔤 Using all keys:`, chars.length, 'characters');
+    }
+
     // Generate character sequence using RNG for fairness
-    const chars = 'abcdefghijklmnopqrstuvwxyz'.split('');
     const sequence: string[] = [];
 
     for (let i = 0; i < totalChars; i++) {
@@ -125,7 +138,7 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       const playerData = playerState.gameSpecificData as BlinkPlayerData;
       const elapsedSinceChar = now - playerData.charStartTime;
 
-      // Check if this player's current character timed out
+      // Check if this player's current character timed out (using base time limit)
       if (elapsedSinceChar >= state.timeLimit && playerData.charStartTime > 0) {
         // Character timed out for this player - move to next character
         this.handlePlayerCharTimeout(playerId);
@@ -231,7 +244,7 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       let points = 100;
       let bonus = 0;
 
-      // Speed bonus (up to 50 bonus points)
+      // Speed bonus (up to 50 bonus points) - use base time limit
       const speedRatio = 1 - (responseTime / state.timeLimit);
       bonus = Math.floor(speedRatio * 50);
 
@@ -263,7 +276,13 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
       playerData.streak = 0; // Break streak
 
+      // Penalty: Reduce current remaining time immediately by adjusting charStartTime
+      // Moving charStartTime back makes the elapsed time appear longer
+      const timePenalty = 300; // Reduce remaining time by 300ms
+      playerData.charStartTime -= timePenalty;
+
       console.log(`❌ ${playerState.displayName} answered incorrectly (pressed '${key}' instead of '${currentChar}')`);
+      console.log(`⏱️  Time penalty applied! Lost ${timePenalty}ms from current timer`);
 
       return {
         success: false,

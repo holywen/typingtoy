@@ -46,7 +46,7 @@ export interface ClientToServerEvents {
     type: 'lobby' | 'room';
     roomId?: string;
     message: string;
-  }) => void;
+  }, callback: (response: { success: boolean; error?: string }) => void) => void;
 
   // Spectator events
   'spectator:join': (data: { roomId: string }, callback: (response: { success: boolean; error?: string }) => void) => void;

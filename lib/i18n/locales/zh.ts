@@ -242,6 +242,7 @@ export default {
     lives: '生命',
     time: '时间',
     streak: '连击',
+    errors: '错误',
     bestStreak: '最佳连击',
     distance: '距离',
     youWon: '你赢了！',
