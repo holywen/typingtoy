@@ -46,6 +46,7 @@ export default {
       layouts: 'Track independent progress for each keyboard layout',
       history: 'Never lose your typing history and achievements',
       resume: 'Resume exactly where you left off, anytime, anywhere',
+      multiplayer: 'Join multiplayer games and compete with other players',
     },
     signUpFree: 'Sign Up Free',
   },

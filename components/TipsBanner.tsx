@@ -60,6 +60,10 @@ export default function TipsBanner() {
                   <span className="text-yellow-300">✓</span>
                   <span>{t.tipsBanner.benefits.resume}</span>
                 </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-yellow-300">✓</span>
+                  <span>{t.tipsBanner.benefits.multiplayer}</span>
+                </li>
               </ul>
             </div>
           </div>

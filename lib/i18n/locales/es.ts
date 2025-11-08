@@ -46,6 +46,7 @@ export default {
       layouts: 'Rastrea el progreso independiente para cada distribución de teclado',
       history: 'Nunca pierdas tu historial de mecanografía y logros',
       resume: 'Reanuda exactamente donde lo dejaste, en cualquier momento y lugar',
+      multiplayer: 'Únete a juegos multijugador y compite con otros jugadores',
     },
     signUpFree: 'Registrarse Gratis',
   },

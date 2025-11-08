@@ -46,6 +46,7 @@ export default {
       layouts: 'Suivez les progrès indépendants pour chaque disposition de clavier',
       history: 'Ne perdez jamais votre historique de frappe et vos réalisations',
       resume: 'Reprenez exactement où vous vous êtes arrêté, n\'importe quand, n\'importe où',
+      multiplayer: 'Rejoignez des jeux multijoueurs et affrontez d\'autres joueurs',
     },
     signUpFree: 'S\'inscrire Gratuitement',
   },

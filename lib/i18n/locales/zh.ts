@@ -46,6 +46,7 @@ export default {
       layouts: '为每个键盘布局独立追踪进度',
       history: '永不丢失您的打字历史和成就',
       resume: '随时随地从上次离开的地方继续',
+      multiplayer: '参与多人游戏与其他玩家竞技',
     },
     signUpFree: '免费注册',
   },

@@ -46,6 +46,7 @@ export default {
       layouts: '各キーボードレイアウトの進捗を個別に追跡',
       history: 'タイピング履歴と実績を失わない',
       resume: 'いつでもどこでも前回の続きから再開',
+      multiplayer: 'マルチプレイヤーゲームに参加して他のプレイヤーと競争',
     },
     signUpFree: '無料登録',
   },
