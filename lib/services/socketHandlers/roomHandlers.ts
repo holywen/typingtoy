@@ -3,6 +3,7 @@
 import { TypedServer, TypedSocket } from '../socketServer';
 import { RoomManager } from '../roomManager';
 import { sendSystemMessage } from './chatHandlers';
+import { RoomEventManager } from '../roomEventManager';
 
 export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void {
   // Room creation
@@ -61,6 +62,9 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
       socket.join(room.roomId);
       socket.data.currentRoomId = room.roomId;
 
+      // NOTE: Don't send system message here - the client will immediately send room:join
+      // which will trigger the system message. Sending it here causes duplicates.
+
       // Notify all clients about new room
       io.emit('room:created', { room });
 
@@ -83,34 +87,19 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
         return;
       }
 
-      // Join room
-      const result = await RoomManager.joinRoom({
+      // Join socket room first
+      socket.join(data.roomId);
+      socket.data.currentRoomId = data.roomId;
+
+      // Use RoomEventManager - it handles all state changes and system messages
+      const result = await RoomEventManager.handlePlayerJoin(io, {
         roomId: data.roomId,
         playerId,
         playerName: displayName,
         password: data.password,
       });
 
-      if (!result.success) {
-        callback(result);
-        return;
-      }
-
-      // Join socket room
-      socket.join(data.roomId);
-      socket.data.currentRoomId = data.roomId;
-
-      // Notify room about new player
-      io.to(data.roomId).emit('room:updated', { room: result.room! });
-      io.to(data.roomId).emit('player:joined', {
-        roomId: data.roomId,
-        player: result.room!.players.find(p => p.playerId === playerId),
-      });
-
-      // Send system message to room chat
-      await sendSystemMessage(io, 'room', `${displayName} joined the room`, data.roomId);
-
-      callback({ success: true, room: result.room! });
+      callback(result);
     } catch (error) {
       console.error('Error joining room:', error);
       callback({ success: false, error: 'Failed to join room' });
@@ -123,24 +112,17 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
       const { playerId, displayName } = socket.data;
       const { roomId } = data;
 
-      // Leave room
-      const room = await RoomManager.leaveRoom(roomId, playerId);
-
       // Leave socket room
       socket.leave(roomId);
       socket.data.currentRoomId = undefined;
 
-      if (room) {
-        // Notify remaining players
-        io.to(roomId).emit('room:updated', { room });
-        io.to(roomId).emit('player:left', { roomId, playerId });
-
-        // Send system message to room chat
-        await sendSystemMessage(io, 'room', `${displayName} left the room`, roomId);
-      } else {
-        // Room was deleted
-        io.emit('room:deleted', { roomId });
-      }
+      // Use RoomEventManager - it handles everything including returning to lobby
+      await RoomEventManager.handlePlayerLeave(io, {
+        roomId,
+        playerId,
+        playerName: displayName,
+        socketId: socket.id, // Provide socketId so player returns to lobby
+      });
     } catch (error) {
       console.error('Error leaving room:', error);
     }
@@ -234,29 +216,26 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
       const { playerId: hostId } = socket.data;
       const { roomId, playerId: targetId } = data;
 
-      // Get target player's name before kicking
+      // Get target player's name and socket before kicking
       const targetSockets = await io.in(roomId).fetchSockets();
       const targetSocket = targetSockets.find(s => s.data.playerId === targetId);
       const targetName = targetSocket?.data.displayName || 'Player';
 
-      // Kick player
-      const room = await RoomManager.kickPlayer(roomId, hostId, targetId);
-
-      if (room) {
-        // Notify kicked player
-        if (targetSocket) {
-          targetSocket.leave(roomId);
-          targetSocket.data.currentRoomId = undefined;
-          targetSocket.emit('player:kicked', { roomId, playerId: targetId });
-        }
-
-        // Notify room
-        io.to(roomId).emit('room:updated', { room });
-        io.to(roomId).emit('player:left', { roomId, playerId: targetId });
-
-        // Send system message to room chat
-        await sendSystemMessage(io, 'room', `${targetName} was kicked from the room`, roomId);
+      // Notify kicked player to leave socket room
+      if (targetSocket) {
+        targetSocket.leave(roomId);
+        targetSocket.data.currentRoomId = undefined;
+        targetSocket.emit('player:kicked', { roomId, playerId: targetId });
       }
+
+      // Use RoomEventManager - it handles everything including returning to lobby
+      await RoomEventManager.handlePlayerKick(io, {
+        roomId,
+        hostId,
+        targetId,
+        targetName,
+        targetSocketId: targetSocket?.id, // Provide socketId so kicked player returns to lobby
+      });
     } catch (error) {
       console.error('Error kicking player:', error);
     }

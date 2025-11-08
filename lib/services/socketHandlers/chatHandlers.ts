@@ -30,9 +30,18 @@ export async function sendSystemMessage(
 
   // Broadcast message
   if (type === 'lobby') {
+    console.log(`📢 [SYSTEM MSG] Sending to lobby: "${message}"`);
     io.emit('chat:message', systemMessage);
   } else if (type === 'room' && roomId) {
+    // Get sockets in the room for debugging
+    const socketsInRoom = await io.in(roomId).fetchSockets();
+    console.log(`📢 [SYSTEM MSG] Sending to room ${roomId}: "${message}" (${socketsInRoom.length} sockets in room)`);
+    socketsInRoom.forEach((s, i) => {
+      console.log(`   Socket ${i + 1}: ${s.data.displayName} (${s.data.playerId})`);
+    });
+
     io.to(roomId).emit('chat:message', systemMessage);
+    console.log(`✅ [SYSTEM MSG] Message sent to room ${roomId}`);
   }
 }
 

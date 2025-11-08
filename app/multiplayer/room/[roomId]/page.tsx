@@ -30,6 +30,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const gameActiveRef = useRef(false); // Track gameActive in ref for cleanup functions
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
+  const hasJoinedRef = useRef(false); // Track if already joined room
 
   // Check authentication before initializing
   useEffect(() => {
@@ -116,6 +117,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     const socket = getSocket();
     if (!socket) return;
 
+    // Prevent duplicate joins in React Strict Mode
+    if (hasJoinedRef.current) {
+      console.log('🔄 Already joined room, skipping duplicate join request');
+      return;
+    }
+    hasJoinedRef.current = true;
+
     console.log('🚪 Attempting to join room:', roomId);
 
     // Add timeout to prevent infinite loading
@@ -157,6 +165,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   }, [socketConnected, playerId, displayName, roomId]);
 
   // Listen for room updates
+  // NOTE: We use useRef to prevent re-registering listeners when isHost changes
+  // isHost is updated inside handleRoomUpdated, so we don't need it as a dependency
+  const isHostRef = useRef(isHost);
+  useEffect(() => {
+    isHostRef.current = isHost;
+  }, [isHost]);
+
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -169,10 +184,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         const player = data.room.players.find((p: any) => p.playerId === playerId);
         if (player) {
           const newIsHost = player.isHost || false;
-          if (newIsHost !== isHost) {
+          if (newIsHost !== isHostRef.current) {
             console.log('🔄 [ROOM UPDATE] isHost changed:', {
               playerId,
-              oldIsHost: isHost,
+              oldIsHost: isHostRef.current,
               newIsHost
             });
             setIsHost(newIsHost);
@@ -230,6 +245,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     };
 
+    console.log('🎧 [ROOM] Setting up room event listeners for room:', roomId);
     const cleanupUpdated = onSocketEvent('room:updated', handleRoomUpdated);
     const cleanupJoined = onSocketEvent('player:joined', handlePlayerJoined);
     const cleanupLeft = onSocketEvent('player:left', handlePlayerLeft);
@@ -239,6 +255,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     const cleanupDeleted = onSocketEvent('room:deleted', handleRoomDeleted);
 
     return () => {
+      console.log('🧹 [ROOM] Cleaning up room event listeners for room:', roomId);
       cleanupUpdated();
       cleanupJoined();
       cleanupLeft();
@@ -247,7 +264,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       cleanupStarted();
       cleanupDeleted();
     };
-  }, [roomId, playerId, isHost, router]);
+  }, [roomId, playerId, router]); // Removed isHost from dependencies
 
   // Sync gameActive state to ref
   useEffect(() => {
@@ -259,39 +276,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     router.push('/multiplayer');
   };
 
-  // Force leave room on page unload (refresh/close/navigate away)
-  useEffect(() => {
-    if (!roomId || !playerId) return;
-
-    const handleBeforeUnload = () => {
-      // Only leave if NOT in active game
-      if (!gameActiveRef.current) {
-        const socket = getSocket();
-        if (socket?.connected) {
-          console.log('🚪 [BEFOREUNLOAD] Leaving room:', roomId);
-          // Synchronous leave event (best effort)
-          socket.emit('room:leave', { roomId });
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    // Cleanup on component unmount (navigation away)
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-
-      // Send leave event when component unmounts (e.g., navigating back to lobby)
-      // Only if NOT in active game (check current ref value at unmount time)
-      if (!gameActiveRef.current) {
-        const socket = getSocket();
-        if (socket?.connected) {
-          console.log('🚪 [UNMOUNT] Leaving room:', roomId);
-          socket.emit('room:leave', { roomId });
-        }
-      }
-    };
-  }, [roomId, playerId]); // Removed gameActive from dependencies to prevent re-running on game start
+  // Note: We DON'T send room:leave on component unmount or beforeunload anymore.
+  // The server's disconnect event handler will automatically clean up when the socket
+  // disconnects. This prevents duplicate leave messages.
+  //
+  // The ONLY time we send room:leave is when the user clicks "Leave Room" button. // Removed gameActive from dependencies to prevent re-running on game start
 
   const handleToggleReady = () => {
     const player = room?.players.find(p => p.playerId === playerId);

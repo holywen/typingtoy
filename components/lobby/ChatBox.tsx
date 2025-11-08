@@ -18,6 +18,7 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const processedMessageIds = useRef<Set<string>>(new Set()); // Track processed message IDs
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -26,7 +27,40 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
 
   // Listen for chat messages
   useEffect(() => {
+    // Clear processed IDs when changing rooms/context
+    processedMessageIds.current.clear();
+    console.log(`🧹 [CHAT] Cleared processed message IDs for context: ${roomId || 'lobby'}`);
+
     const handleChatMessage = (data: ChatMessage) => {
+      console.log(`📨 [CHAT] Received:`, data.id, data.message, `(type: ${data.type}, roomId: ${data.roomId})`);
+
+      // Filter messages by context (lobby vs room)
+      if (roomId) {
+        // In a room - only show room messages for this specific room
+        if (data.type !== 'room' || data.roomId !== roomId) {
+          console.log(`🚫 [CHAT] Filtered out (expected room ${roomId})`);
+          return;
+        }
+      } else {
+        // In lobby - only show lobby messages
+        if (data.type !== 'lobby') {
+          console.log(`🚫 [CHAT] Filtered out (expected lobby)`);
+          return;
+        }
+      }
+
+      console.log(`✅ [CHAT] Passed filter, checking for duplicates...`);
+
+      // Check if we've already processed this message ID (prevents React Strict Mode duplicates)
+      if (processedMessageIds.current.has(data.id)) {
+        console.log(`⚠️ [CHAT] Already processed (Strict Mode duplicate): ${data.id}`);
+        return;
+      }
+
+      // Mark as processed
+      processedMessageIds.current.add(data.id);
+      console.log(`➕ [CHAT] Adding to messages: ${data.id}`);
+
       setMessages((prev) => [...prev, data]);
     };
 
@@ -42,7 +76,7 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
       cleanupMessage();
       cleanupError();
     };
-  }, []);
+  }, [roomId]); // Re-setup listener when roomId changes
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();

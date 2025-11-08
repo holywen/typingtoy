@@ -162,18 +162,16 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     }
 
     // Add to online players set
-    await redis.sadd('online:players', playerId);
-    await redis.setex(`player:${playerId}:socketId`, 3600, socket.id);
-
     // Emit connection confirmation
     socket.emit('player:connected', { playerId });
 
-    // Broadcast updated online players list
-    await broadcastOnlinePlayers();
-
-    // Send lobby join system message
-    const { sendSystemMessage } = await import('./socketHandlers/chatHandlers');
-    await sendSystemMessage(io!, 'lobby', `${displayName} joined the lobby`);
+    // Use LobbyEventManager - it handles state changes and system messages
+    const { LobbyEventManager } = await import('./lobbyEventManager');
+    await LobbyEventManager.handlePlayerJoin(io!, {
+      playerId,
+      playerName: displayName,
+      socketId: socket.id,
+    });
 
     // Handle player identification
     socket.on('player:identify', (data) => {
@@ -188,36 +186,22 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       console.log(`❌ Player disconnected: ${displayName} (${reason})`);
 
       try {
-        // Remove from online players
-        await redis.srem('online:players', playerId);
-        await redis.del(`player:${playerId}:socketId`);
-
         // Leave current room if in one
         if (socket.data.currentRoomId) {
           const roomId = socket.data.currentRoomId;
-          console.log(`🚪 Player ${displayName} leaving room ${roomId} due to disconnect`);
-          
-          // Import RoomManager
-          const { RoomManager } = await import('./roomManager');
-          
-          // Leave room
-          const room = await RoomManager.leaveRoom(roomId, playerId);
 
           // Leave socket room
           socket.leave(roomId);
 
-          if (room) {
-            // Notify remaining players
-            io!.to(roomId).emit('room:updated', { room });
-            io!.to(roomId).emit('player:left', { roomId, playerId });
+          // Import RoomEventManager
+          const { RoomEventManager } = await import('./roomEventManager');
 
-            // Send system message to room chat
-            const { sendSystemMessage } = await import('./socketHandlers/chatHandlers');
-            await sendSystemMessage(io!, 'room', `${displayName} left the room`, roomId);
-          } else {
-            // Room was deleted
-            io!.emit('room:deleted', { roomId });
-          }
+          // Use RoomEventManager - it handles duplicate check and system messages
+          await RoomEventManager.handlePlayerLeave(io!, {
+            roomId,
+            playerId,
+            playerName: displayName,
+          });
 
           socket.data.currentRoomId = undefined;
         }
@@ -230,12 +214,13 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
           socket.data.inMatchmaking = false;
           socket.data.matchmakingGameType = undefined;
         }
-        // Broadcast updated online players list
-        await broadcastOnlinePlayers();
 
-        // Send lobby leave system message
-        const { sendSystemMessage } = await import('./socketHandlers/chatHandlers');
-        await sendSystemMessage(io!, 'lobby', `${displayName} left the lobby`);
+        // Use LobbyEventManager - it handles state changes and system messages
+        const { LobbyEventManager } = await import('./lobbyEventManager');
+        await LobbyEventManager.handlePlayerLeave(io!, {
+          playerId,
+          playerName: displayName,
+        });
       } catch (error) {
         console.error(`Error during disconnect cleanup for ${displayName}:`, error);
       }

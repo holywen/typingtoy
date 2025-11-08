@@ -87,7 +87,7 @@ export class RoomManager {
     playerId: string;
     playerName: string;
     password?: string;
-  }): Promise<{ success: boolean; room?: GameRoom; error?: string }> {
+  }): Promise<{ success: boolean; room?: GameRoom; error?: string; isReconnect?: boolean }> {
     const room = await this.getRoom(params.roomId);
 
     if (!room) {
@@ -109,7 +109,7 @@ export class RoomManager {
       console.log(`👤 Player ${params.playerName} already in room, reconnecting`);
       existingPlayer.isConnected = true;
       await this.updateRoom(room);
-      return { success: true, room };
+      return { success: true, room, isReconnect: true };
     }
 
     // Check if room is full (after checking existing player)

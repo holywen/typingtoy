@@ -138,8 +138,19 @@ export default function MultiplayerPage() {
 
     initialize();
 
-    // Note: We don't disconnect the socket on unmount because
-    // the user might be navigating to a room page that needs the socket
+    // Cleanup: Disconnect socket when user leaves multiplayer area
+    return () => {
+      // Check if user is navigating to another multiplayer page (room, leaderboard)
+      // by checking if URL still contains '/multiplayer/'
+      const isStayingInMultiplayer = window.location.pathname.startsWith('/multiplayer/');
+
+      if (!isStayingInMultiplayer) {
+        console.log('🚪 User leaving multiplayer area, disconnecting socket');
+        disconnectSocket();
+      } else {
+        console.log('🔄 User navigating within multiplayer, keeping socket connected');
+      }
+    };
 
     // Note: Server automatically removes players from rooms when they connect to lobby
     // See socketServer.ts:139-159 - cleanups stale room memberships on connection
