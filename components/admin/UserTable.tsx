@@ -10,6 +10,8 @@ interface User {
   role: 'user' | 'admin';
   createdAt: string;
   emailVerified?: string | null;
+  banned?: boolean;
+  banReason?: string;
 }
 
 interface UserTableProps {
@@ -46,6 +48,47 @@ export default function UserTable({
       setUpdatingUserId(userId);
       try {
         await onDeleteUser(userId);
+      } finally {
+        setUpdatingUserId(null);
+      }
+    }
+  };
+
+  const handleBanToggle = async (userId: string, currentBanStatus: boolean, userEmail: string) => {
+    const confirmMessage = currentBanStatus ? t.admin.confirmUnban : t.admin.confirmBan;
+
+    if (confirm(confirmMessage)) {
+      setUpdatingUserId(userId);
+      try {
+        const banReason = !currentBanStatus
+          ? prompt(t.admin.banReason + ':', '') || 'No reason provided'
+          : undefined;
+
+        const response = await fetch(`/api/admin/users/${userId}/ban`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            banned: !currentBanStatus,
+            banReason,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Update local state
+          await onUpdateUser(userId, {
+            banned: !currentBanStatus,
+            banReason: !currentBanStatus ? banReason : undefined,
+          });
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+      } catch (error) {
+        console.error('Error toggling ban status:', error);
+        alert('Failed to update ban status');
       } finally {
         setUpdatingUserId(null);
       }
@@ -122,31 +165,55 @@ export default function UserTable({
                 </select>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                {user.emailVerified ? (
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                    {t.admin.verified}
-                  </span>
-                ) : (
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
-                    {t.admin.unverified}
-                  </span>
-                )}
+                <div className="flex flex-col gap-1">
+                  {user.emailVerified ? (
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
+                      {t.admin.verified}
+                    </span>
+                  ) : (
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100">
+                      {t.admin.unverified}
+                    </span>
+                  )}
+                  {user.banned && (
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100">
+                      {t.admin.banned}
+                    </span>
+                  )}
+                </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                 {formatDate(user.createdAt)}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button
-                  onClick={() => handleDelete(user._id, user.email)}
-                  disabled={currentUserId === user._id || updatingUserId === user._id}
-                  className={`text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ${
-                    currentUserId === user._id
-                      ? 'cursor-not-allowed opacity-50'
-                      : ''
-                  }`}
-                >
-                  {t.admin.delete}
-                </button>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => handleBanToggle(user._id, user.banned || false, user.email)}
+                    disabled={currentUserId === user._id || updatingUserId === user._id}
+                    className={`${
+                      user.banned
+                        ? 'text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300'
+                        : 'text-orange-600 hover:text-orange-900 dark:text-orange-400 dark:hover:text-orange-300'
+                    } ${
+                      currentUserId === user._id
+                        ? 'cursor-not-allowed opacity-50'
+                        : ''
+                    }`}
+                  >
+                    {user.banned ? t.admin.unban : t.admin.ban}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(user._id, user.email)}
+                    disabled={currentUserId === user._id || updatingUserId === user._id}
+                    className={`text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ${
+                      currentUserId === user._id
+                        ? 'cursor-not-allowed opacity-50'
+                        : ''
+                    }`}
+                  >
+                    {t.admin.delete}
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

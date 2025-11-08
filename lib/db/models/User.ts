@@ -9,6 +9,9 @@ interface UserDocument extends mongoose.Document {
   image?: string;
   emailVerified?: Date;
   role: 'user' | 'admin';
+  banned: boolean;
+  banReason?: string;
+  bannedAt?: Date;
   settings: {
     keyboardLayout: string;
     soundEnabled: boolean;
@@ -71,6 +74,16 @@ const UserSchema = new Schema<UserDocument>(
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
+    },
+    banned: {
+      type: Boolean,
+      default: false,
+    },
+    banReason: {
+      type: String,
+    },
+    bannedAt: {
+      type: Date,
     },
     settings: {
       keyboardLayout: {
