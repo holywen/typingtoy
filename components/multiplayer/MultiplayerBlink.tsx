@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { convertTextToLayout } from '@/lib/utils/layoutMapping';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { BlinkGameState, BlinkPlayerData } from '@/lib/game-engine/BlinkMultiplayer';
@@ -33,6 +35,33 @@ export default function MultiplayerBlink({
   const [totalChars, setTotalChars] = useState<number>(50);
   const [feedback, setFeedback] = useState<{ message: string; type: 'correct' | 'error' | 'neutral' } | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(2000);
+  const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+
+  // Load keyboard layout from user settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setKeyboardLayout(settings.keyboardLayout);
+  }, []);
+
+  // Convert current character to user's keyboard layout for display
+  const displayChar = useMemo(() => {
+    if (!currentChar) return '';
+    return convertTextToLayout(currentChar, keyboardLayout);
+  }, [currentChar, keyboardLayout]);
+
+  // Convert user input from their layout back to QWERTY for server validation
+  const convertInputToQwerty = useCallback((key: string): string => {
+    if (keyboardLayout === 'qwerty') return key;
+    // For reverse conversion, we need to find which QWERTY key maps to the user's input
+    // Since convertTextToLayout converts QWERTY→Layout, we test all QWERTY keys
+    const qwertyKeys = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    for (const qwertyKey of qwertyKeys) {
+      if (convertTextToLayout(qwertyKey, keyboardLayout) === key) {
+        return qwertyKey;
+      }
+    }
+    return key; // Fallback to original if no mapping found
+  }, [keyboardLayout]);
 
   // Listen for game state updates
   useEffect(() => {
@@ -40,13 +69,6 @@ export default function MultiplayerBlink({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
-      console.log('📥 [BLINK] Received game:state');
-      console.log('🔍 [Blink Client] Received game state:', {
-        hasGameSpecificState: !!state.gameSpecificState,
-        gameSpecificState: state.gameSpecificState,
-        status: state.status
-      });
-
       setGameState(state);
       setGameStarted(true);
 
@@ -150,7 +172,10 @@ export default function MultiplayerBlink({
       // Only process letter keys
       if (key.length !== 1 || !/[a-z]/.test(key)) return;
 
-      // Send input to server
+      // Convert user's input from their layout to QWERTY for server validation
+      const qwertyKey = convertInputToQwerty(key);
+
+      // Send QWERTY key to server
       emitSocketEvent('game:input', {
         roomId,
         input: {
@@ -158,21 +183,21 @@ export default function MultiplayerBlink({
           inputType: 'keystroke',
           timestamp: Date.now(),
           data: {
-            key,
+            key: qwertyKey,
           },
         },
       });
 
-      // Show immediate feedback
-      if (key === currentChar.toLowerCase()) {
+      // Show immediate feedback using the display character (in user's layout)
+      if (key === displayChar.toLowerCase()) {
         setFeedback({ message: 'Correct!', type: 'correct' });
       } else {
-        setFeedback({ message: `Wrong! Expected '${currentChar}'`, type: 'error' });
+        setFeedback({ message: `Wrong! Expected '${displayChar}'`, type: 'error' });
       }
 
       setTimeout(() => setFeedback(null), 500);
     },
-    [gameStarted, gameEnded, currentChar, roomId, playerId]
+    [gameStarted, gameEnded, currentChar, displayChar, roomId, playerId, convertInputToQwerty]
   );
 
   useEffect(() => {
@@ -193,11 +218,108 @@ export default function MultiplayerBlink({
         return current ? [current, ...others] : sortedPlayers;
       })();
 
+  // Check if current player finished but game is still ongoing
+  const isWaitingForOthers = currentPlayerState?.isFinished && !gameEnded;
+
   if (!gameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-900 to-indigo-900">
         <div className="text-white text-2xl font-bold animate-pulse">
           Waiting for game to start...
+        </div>
+      </div>
+    );
+  }
+
+  // Show waiting screen if current player finished but others are still playing
+  if (isWaitingForOthers) {
+    const activePlayers = sortedPlayers.filter(p => !p.isFinished);
+    const finishedPlayers = sortedPlayers.filter(p => p.isFinished);
+    const currentPlayerData = currentPlayerState?.gameSpecificData as BlinkPlayerData;
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-900 to-indigo-900">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center max-w-2xl">
+          <div className="text-6xl mb-6">⏳</div>
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Waiting for Other Players...
+          </h2>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+            You've finished! Please wait while others complete the game.
+          </p>
+
+          {/* Your Stats */}
+          <div className="mb-8 p-6 bg-purple-100 dark:bg-purple-900/30 rounded-lg border-2 border-purple-500">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Your Performance</h3>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Score</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.score}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.accuracy.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Best Streak</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {currentPlayerData?.bestStreak || 0}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">First Answers</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerData?.firstAnswers || 0}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Players Still Playing */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+              Players Still Playing ({activePlayers.length})
+            </h3>
+            <div className="space-y-2">
+              {activePlayers.map(player => {
+                const playerData = player.gameSpecificData as BlinkPlayerData;
+                return (
+                  <div key={player.playerId} className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="font-semibold text-gray-900 dark:text-white">{player.displayName}</span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {playerData?.currentCharIndex || 0}/{totalChars}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Finished Players */}
+          {finishedPlayers.length > 1 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+                Finished Players ({finishedPlayers.length})
+              </h3>
+              <div className="space-y-2">
+                {finishedPlayers.map(player => (
+                  <div key={player.playerId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg opacity-75">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        {player.displayName}
+                        {player.playerId === playerId && ' (You)'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {player.score} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -392,7 +514,7 @@ export default function MultiplayerBlink({
                     Type this character:
                   </div>
                   <div className="text-white text-8xl md:text-9xl font-bold mb-6 animate-pulse">
-                    {playerData?.currentChar || '...'}
+                    {isCurrentPlayer ? displayChar || '...' : (playerData?.currentChar || '...')}
                   </div>
                   {feedback && isCurrentPlayer && (
                     <div

@@ -23,19 +23,13 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
     const authChanged = currentAuth.userId !== options.userId;
 
     if (authChanged) {
-      console.log('🔄 Auth changed, disconnecting old socket and creating new one', {
-        oldUserId: currentAuth.userId,
-        newUserId: options.userId
-      });
       socket.disconnect();
       socket.removeAllListeners();
       socket = null;
       // Fall through to create new socket
     } else if (socket.connected) {
-      console.log('✅ Socket already connected with same auth');
       return socket;
     } else if (!socket.connected) {
-      console.log('🔄 Reconnecting existing socket...');
       socket.connect();
       return socket;
     }
@@ -48,11 +42,6 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
     ? window.location.origin
     : (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000');
 
-  console.log('🔌 [SOCKET CLIENT] Connecting with auth:', {
-    userId: options.userId,
-    deviceId: options.deviceId,
-    displayName: options.displayName,
-  });
 
   socket = io(socketUrl, {
     auth: {
@@ -72,11 +61,11 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
 
   // Connection events
   socket.on('connect', () => {
-    console.log('✅ Socket connected:', socket?.id);
+    // Socket connected
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('❌ Socket disconnected:', reason);
+    // Socket disconnected
   });
 
   socket.on('connect_error', (error) => {
@@ -122,14 +111,12 @@ export function emitSocketEvent<K extends keyof ClientToServerEvents>(
   callback?: (...args: any[]) => void
 ): void {
   if (socket && socket.connected) {
-    console.log(`📤 [SOCKET CLIENT] Emitting event: ${String(event)}`, data);
     if (callback) {
       socket.emit(event as any, data, callback);
     } else {
       socket.emit(event as any, data);
     }
   } else {
-    console.warn('⚠️ [SOCKET CLIENT] Socket not connected, cannot emit event:', event);
     if (callback) {
       callback({ success: false, error: 'Socket not connected' });
     }
@@ -142,24 +129,14 @@ export function onSocketEvent<K extends keyof ServerToClientEvents>(
   handler: ServerToClientEvents[K]
 ): () => void {
   if (socket) {
-    console.log(`👂 [SOCKET CLIENT] Registering listener for event: ${String(event)}`);
-
-    // Wrap handler to log when event is received
-    const wrappedHandler = (...args: any[]) => {
-      console.log(`📥 [SOCKET CLIENT] Received event: ${String(event)}`, args[0]);
-      (handler as any)(...args);
-    };
-
-    socket.on(event as any, wrappedHandler as any);
+    socket.on(event as any, handler as any);
 
     // Return cleanup function
     return () => {
-      console.log(`🗑️ [SOCKET CLIENT] Removing listener for event: ${String(event)}`);
-      socket?.off(event as any, wrappedHandler as any);
+      socket?.off(event as any, handler as any);
     };
   }
 
-  console.warn(`⚠️ [SOCKET CLIENT] No socket available to register listener for: ${String(event)}`);
   return () => {}; // No-op cleanup
 }
 

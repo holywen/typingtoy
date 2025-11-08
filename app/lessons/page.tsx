@@ -1,12 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { lessonsData } from '@/lib/data/lessons';
 import TipsBanner from '@/components/TipsBanner';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { convertKeysToLayout } from '@/lib/utils/layoutMapping';
 
 export default function LessonsPage() {
   const { t } = useLanguage();
+  const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+
+  // Load user's keyboard layout setting
+  useEffect(() => {
+    const settings = getUserSettings();
+    setKeyboardLayout(settings.keyboardLayout);
+
+    // Listen for keyboard layout changes
+    const handleLayoutChange = (event: CustomEvent) => {
+      setKeyboardLayout(event.detail.layout);
+    };
+
+    window.addEventListener('keyboardLayoutChanged', handleLayoutChange as EventListener);
+
+    return () => {
+      window.removeEventListener('keyboardLayoutChanged', handleLayoutChange as EventListener);
+    };
+  }, []);
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -69,7 +90,7 @@ export default function LessonsPage() {
               </div>
 
               <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                <p>{t.lessons.focusKeys}: <span className="font-mono font-semibold">{lesson.focusKeys.join(', ')}</span></p>
+                <p>{t.lessons.focusKeys}: <span className="font-mono font-semibold">{convertKeysToLayout(lesson.focusKeys, keyboardLayout).join(', ')}</span></p>
                 <p className="mt-1">{t.lessons.estimatedTime}: {lesson.estimatedTime} {t.lesson.minutes}</p>
                 <p className="mt-1 flex items-center">
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -111,18 +111,14 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
   private getCharactersFromLesson(): string[] {
     const customSettings = this.settings.customRules as { lessonNumber?: number } | undefined;
 
-    console.log(`🎯 FallingBlocks getCharactersFromLesson: lessonNumber=${customSettings?.lessonNumber}`);
-
     if (customSettings?.lessonNumber) {
       const lesson = lessonsData.find(l => l.lessonNumber === customSettings.lessonNumber);
       if (lesson && lesson.focusKeys.length > 0) {
-        console.log(`📚 Using lesson ${customSettings.lessonNumber} keys:`, lesson.focusKeys);
         return lesson.focusKeys;
       }
     }
 
     // All lowercase letters
-    console.log(`🔤 Using all 26 keys`);
     return 'abcdefghijklmnopqrstuvwxyz'.split('');
   }
   
@@ -130,14 +126,10 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
    * Called when game starts
    */
   protected onGameStart(): void {
-    console.log(`🎮 FallingBlocks onGameStart() called for room ${this.roomId}`);
     this.spawnTimer = 0;
 
     // Spawn 1 initial block (identical for all players)
     this.spawnBlockForPlayers();
-
-    const state = this.gameState.gameSpecificState as FallingBlocksGameState;
-    console.log(`✅ Spawned ${state.blocks.length} initial blocks for ${this.gameState.players.size} players`);
   }
   
   /**
@@ -218,12 +210,28 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
         const playerState = this.getPlayerState(block.playerId);
         if (playerState && !playerState.isFinished) {
           const playerData = playerState.gameSpecificData as FallingBlocksPlayerData;
-          playerData.blocksMissed++;
 
-          // Lose points for missed blocks
-          this.updatePlayerState(block.playerId, {
-            score: Math.max(0, playerState.score - 10),
-          });
+          // Create new playerData object with incremented counts (avoid mutation)
+          const updatedPlayerData: FallingBlocksPlayerData = {
+            ...playerData,
+            blocksMissed: playerData.blocksMissed + 1,
+            errorCount: playerData.errorCount + 1,
+          };
+
+          // Check if player exceeded max errors
+          if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
+            this.updatePlayerState(block.playerId, {
+              isFinished: true,
+              score: Math.max(0, playerState.score - 10),
+              gameSpecificData: updatedPlayerData,
+            });
+          } else {
+            // Lose points for missed blocks and update error count
+            this.updatePlayerState(block.playerId, {
+              score: Math.max(0, playerState.score - 10),
+              gameSpecificData: updatedPlayerData,
+            });
+          }
         }
       }
     }
@@ -234,7 +242,6 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     // Check if all players finished
     const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
     if (allFinished) {
-      console.log(`🏁 Falling Blocks ended - all players finished`);
       this.gameState.status = 'finished';
       return;
     }
@@ -261,39 +268,55 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     if (input.inputType !== 'keystroke') {
       return { success: false, error: 'Invalid input type' };
     }
-    
+
     const keystroke = input.data as PlayerKeystroke;
     const playerState = this.getPlayerState(playerId);
-    
+
     if (!playerState) {
       return { success: false, error: 'Player not found' };
     }
-    
+
     const state = this.gameState.gameSpecificState as FallingBlocksGameState;
-    const playerData = playerState.gameSpecificData as FallingBlocksPlayerData;
 
     // Find blocks matching the typed character that belong to this player
     const matchingBlocks = state.blocks.filter(b =>
       b.char === keystroke.key && b.playerId === playerId
     );
-    
+
     if (matchingBlocks.length === 0) {
-      // Incorrect key - increment error counter
-      playerData.errorCount++;
 
-      // Check if player exceeded max errors
-      if (playerData.errorCount >= playerData.maxErrors) {
-        console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${playerData.errorCount})`);
-        this.updatePlayerState(playerId, {
-          isFinished: true,
-        });
-      }
-
-      // Update metrics
-      return this.handleKeystroke(playerId, {
+      // Incorrect key - update metrics (this will increment errorCount in PlayerState)
+      const result = this.handleKeystroke(playerId, {
         ...keystroke,
         isCorrect: false,
       });
+
+      // Get FRESH player state to include any blocks that fell during this input
+      const updatedPlayerState = this.getPlayerState(playerId);
+      const currentPlayerData = updatedPlayerState?.gameSpecificData as FallingBlocksPlayerData;
+
+      if (updatedPlayerState && currentPlayerData) {
+        // Increment error count in gameSpecificData (don't use PlayerState.errorCount)
+        const updatedPlayerData: FallingBlocksPlayerData = {
+          ...currentPlayerData,  // Use FRESH data (includes blocks missed counts)
+          errorCount: currentPlayerData.errorCount + 1,  // Increment game-specific error
+        };
+
+        // Check if player exceeded max errors
+        if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
+          this.updatePlayerState(playerId, {
+            isFinished: true,
+            gameSpecificData: updatedPlayerData,
+          });
+        } else {
+          // Save updated error count
+          this.updatePlayerState(playerId, {
+            gameSpecificData: updatedPlayerData,
+          });
+        }
+      }
+
+      return result;
     }
     
     // Hit the closest matching block (lowest on screen)
@@ -308,16 +331,28 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     if (blockIndex !== -1) {
       state.blocks.splice(blockIndex, 1);
     }
-    
-    // Update player stats
-    playerData.blocksDestroyed++;
+
+    // Get FRESH player state to include any blocks that fell during this input
+    const freshPlayerState = this.getPlayerState(playerId);
+    const currentPlayerData = freshPlayerState?.gameSpecificData as FallingBlocksPlayerData;
+
+    if (!freshPlayerState || !currentPlayerData) {
+      return { success: false, error: 'Player state lost' };
+    }
+
+    // Update player stats - create new object to avoid mutation
+    const updatedPlayerData: FallingBlocksPlayerData = {
+      ...currentPlayerData,  // Use FRESH data (includes blocks missed counts)
+      blocksDestroyed: currentPlayerData.blocksDestroyed + 1,
+    };
+
     const pointsEarned = 10 + (closestBlock.y > 80 ? 5 : 0); // Bonus for last-second saves
-    
+
     this.updatePlayerState(playerId, {
-      score: playerState.score + pointsEarned,
-      gameSpecificData: playerData,
+      score: freshPlayerState.score + pointsEarned,
+      gameSpecificData: updatedPlayerData,
     });
-    
+
     // Update typing metrics
     return this.handleKeystroke(playerId, {
       ...keystroke,

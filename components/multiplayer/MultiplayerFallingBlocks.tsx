@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { convertTextToLayout } from '@/lib/utils/layoutMapping';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 
@@ -36,6 +38,33 @@ export default function MultiplayerFallingBlocks({
   const [gameEnded, setGameEnded] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const inputBufferRef = useRef<string>('');
+  const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+
+  // Load keyboard layout from user settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setKeyboardLayout(settings.keyboardLayout);
+  }, []);
+
+  // Convert blocks for display in user's layout
+  const displayBlocks = useMemo(() => {
+    return localBlocks.map(block => ({
+      ...block,
+      displayChar: convertTextToLayout(block.char, keyboardLayout)
+    }));
+  }, [localBlocks, keyboardLayout]);
+
+  // Convert user input from their layout back to QWERTY for server validation
+  const convertInputToQwerty = useCallback((key: string): string => {
+    if (keyboardLayout === 'qwerty') return key;
+    const qwertyKeys = 'abcdefghijklmnopqrstuvwxyz'.split('');
+    for (const qwertyKey of qwertyKeys) {
+      if (convertTextToLayout(qwertyKey, keyboardLayout) === key) {
+        return qwertyKey;
+      }
+    }
+    return key;
+  }, [keyboardLayout]);
 
   // Listen for game state updates
   useEffect(() => {
@@ -43,7 +72,6 @@ export default function MultiplayerFallingBlocks({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
-      console.log('📥 [FALLING BLOCKS] Received game:state');
       setGameState(state);
       setGameStarted(true);
 
@@ -63,7 +91,6 @@ export default function MultiplayerFallingBlocks({
     const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
-      console.log('🎮 Falling Blocks game ended, winner:', data.winner, 'finalState:', data.finalState);
     };
 
     // TODO: Add 'game:error' to ServerToClientEvents in types/socket.ts
@@ -90,12 +117,19 @@ export default function MultiplayerFallingBlocks({
 
       const key = e.key.toLowerCase();
 
-      // Check if key matches any of this player's blocks
+      // Only handle letter keys and semicolon
+      if (key.length !== 1 || !key.match(/[a-z;]/)) return;
+
+      // Convert user input from their layout to QWERTY
+      const qwertyKey = convertInputToQwerty(key);
+
+      // Check if converted key matches any of this player's blocks (in QWERTY)
       const matchingBlock = localBlocks.find(
-        (block) => block.char === key && block.playerId === playerId
+        (block) => block.char === qwertyKey && block.playerId === playerId
       );
+
       if (matchingBlock) {
-        // Send input to server
+        // Correct key - send to server
         emitSocketEvent('game:input', {
           roomId,
           input: {
@@ -103,7 +137,7 @@ export default function MultiplayerFallingBlocks({
             inputType: 'keystroke',
             timestamp: Date.now(),
             data: {
-              key,
+              key: qwertyKey,
               isCorrect: true,
               blockId: matchingBlock.id,
             },
@@ -112,9 +146,23 @@ export default function MultiplayerFallingBlocks({
 
         // Optimistically remove block locally for instant feedback
         setLocalBlocks((prev) => prev.filter((b) => b.id !== matchingBlock.id));
+      } else {
+        // Wrong key - also send to server for error counting
+        emitSocketEvent('game:input', {
+          roomId,
+          input: {
+            playerId,
+            inputType: 'keystroke',
+            timestamp: Date.now(),
+            data: {
+              key: qwertyKey,
+              isCorrect: false,
+            },
+          },
+        });
       }
     },
-    [gameStarted, gameEnded, localBlocks, roomId, playerId]
+    [gameStarted, gameEnded, localBlocks, roomId, playerId, convertInputToQwerty]
   );
 
   useEffect(() => {
@@ -135,11 +183,104 @@ export default function MultiplayerFallingBlocks({
         return current ? [current, ...others] : sortedPlayers;
       })();
 
+  // Check if current player finished but game is still ongoing
+  const isWaitingForOthers = currentPlayerState?.isFinished && !gameEnded;
+
   if (!gameStarted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-purple-900">
         <div className="text-white text-2xl font-bold animate-pulse">
           Waiting for game to start...
+        </div>
+      </div>
+    );
+  }
+
+  // Show waiting screen if current player finished but others are still playing
+  if (isWaitingForOthers) {
+    const activePlayers = sortedPlayers.filter(p => !p.isFinished);
+    const finishedPlayers = sortedPlayers.filter(p => p.isFinished);
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-900 to-purple-900">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center max-w-2xl">
+          <div className="text-6xl mb-6">⏳</div>
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Waiting for Other Players...
+          </h2>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+            You've finished! Please wait while others complete the game.
+          </p>
+
+          {/* Your Stats */}
+          <div className="mb-8 p-6 bg-blue-100 dark:bg-blue-900/30 rounded-lg border-2 border-blue-500">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Your Performance</h3>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Score</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.score}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">WPM</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(currentPlayerState?.currentWPM || 0)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.accuracy.toFixed(1)}%</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Errors</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {(currentPlayerState?.gameSpecificData as any)?.errorCount || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Players Still Playing */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+              Players Still Playing ({activePlayers.length})
+            </h3>
+            <div className="space-y-2">
+              {activePlayers.map(player => (
+                <div key={player.playerId} className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="font-semibold text-gray-900 dark:text-white">{player.displayName}</span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {player.score} pts | {Math.round(player.currentWPM)} WPM
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Finished Players */}
+          {finishedPlayers.length > 1 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+                Finished Players ({finishedPlayers.length})
+              </h3>
+              <div className="space-y-2">
+                {finishedPlayers.map(player => (
+                  <div key={player.playerId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg opacity-75">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        {player.displayName}
+                        {player.playerId === playerId && ' (You)'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {player.score} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -206,7 +347,7 @@ export default function MultiplayerFallingBlocks({
                         {player.playerId === playerId && ' (You)'}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {Math.round(player.currentWPM)} WPM | {player.accuracy.toFixed(1)}% Accuracy
+                        {Math.round(player.currentWPM)} WPM | {player.accuracy.toFixed(1)}% Accuracy | {(player.gameSpecificData as any)?.errorCount || 0} Errors
                       </div>
                     </div>
                   </div>
@@ -250,7 +391,10 @@ export default function MultiplayerFallingBlocks({
         {arrangedPlayers.map((player) => {
           const actualRank = sortedPlayers.findIndex(p => p.playerId === player.playerId) + 1;
           const isCurrentPlayer = player.playerId === playerId;
-          const playerBlocks = localBlocks.filter((block) => block.playerId === player.playerId);
+          // Use displayBlocks for current player (shows converted chars), raw blocks for others
+          const playerBlocks = isCurrentPlayer
+            ? displayBlocks.filter((block) => block.playerId === player.playerId)
+            : localBlocks.filter((block) => block.playerId === player.playerId);
 
           return (
             <div
@@ -274,7 +418,7 @@ export default function MultiplayerFallingBlocks({
                 </div>
 
                 {/* Stats */}
-                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-white/80">
+                <div className="mt-2 grid grid-cols-5 gap-2 text-xs text-white/80">
                   <div>
                     <div className="text-white/60">Score</div>
                     <div className="font-bold text-white">{player.score}</div>
@@ -286,6 +430,12 @@ export default function MultiplayerFallingBlocks({
                   <div>
                     <div className="text-white/60">Acc</div>
                     <div className="font-bold text-white">{player.accuracy.toFixed(0)}%</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Errors</div>
+                    <div className="font-bold text-white">
+                      {(player.gameSpecificData as any)?.errorCount || 0}/{(player.gameSpecificData as any)?.maxErrors || 10}
+                    </div>
                   </div>
                   <div>
                     <div className="text-white/60">Lvl</div>
@@ -306,7 +456,7 @@ export default function MultiplayerFallingBlocks({
                       top: `${block.y}%`,
                     }}
                   >
-                    {block.char}
+                    {'displayChar' in block ? (block as any).displayChar : block.char}
                   </div>
                 ))}
 

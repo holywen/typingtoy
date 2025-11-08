@@ -26,6 +26,8 @@ export default function FallingBlocksGame() {
   const [maxErrors] = useState(10);
   const blockIdRef = useRef(0);
   const gameLoopRef = useRef<number | undefined>(undefined);
+  const blocksAtBottomRef = useRef(0);
+  const foundMatchRef = useRef(false);
 
   // Get characters from selected lesson
   useEffect(() => {
@@ -61,16 +63,34 @@ export default function FallingBlocksGame() {
         y: block.y + block.speed,
       }));
 
-      // Check for blocks that reached bottom
-      const reachedBottom = updated.some(block => block.y >= 90);
-      if (reachedBottom) {
-        setGameOver(true);
-        return prev;
+      // Check for blocks that reached bottom (y >= 100 to match multiplayer)
+      const blocksAtBottom = updated.filter(block => block.y >= 100);
+
+      // Store count in ref (only set on FIRST call in Strict Mode, won't be overwritten by second call)
+      if (blocksAtBottom.length > 0 && blocksAtBottomRef.current === 0) {
+        blocksAtBottomRef.current = blocksAtBottom.length;
       }
 
-      return updated.filter(block => block.y < 90);
+      // Remove blocks that reached bottom
+      return updated.filter(block => block.y < 100);
     });
-  }, []);
+
+    // Increment error count OUTSIDE setBlocks callback
+    // This runs after BOTH Strict Mode calls of setBlocks, so ref has the correct value
+    if (blocksAtBottomRef.current > 0) {
+      const missedCount = blocksAtBottomRef.current;
+      // Reset ref IMMEDIATELY before setErrorCount (to prepare for next cycle)
+      blocksAtBottomRef.current = 0;
+
+      setErrorCount(prevErrors => {
+        const newErrorCount = prevErrors + missedCount;
+        if (newErrorCount >= maxErrors) {
+          setGameOver(true);
+        }
+        return newErrorCount;
+      });
+    }
+  }, [maxErrors]);
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
@@ -113,10 +133,16 @@ export default function FallingBlocksGame() {
     // Ignore non-letter keys
     if (key.length !== 1 || !key.match(/[a-z;]/)) return;
 
-    // Check if there's a matching block BEFORE updating state
+    // Reset the ref at the start (for this new keystroke)
+    foundMatchRef.current = false;
+
     setBlocks(prev => {
       const hitIndex = prev.findIndex(block => block.char === key);
+
       if (hitIndex !== -1) {
+        // Set ref to true to indicate match found
+        foundMatchRef.current = true;
+
         // Match found - update score
         setScore(s => {
           const newScore = s + 10;
@@ -127,8 +153,16 @@ export default function FallingBlocksGame() {
           return newScore;
         });
         return prev.filter((_, i) => i !== hitIndex);
-      } else {
-        // No match found - increment error count
+      }
+
+      return prev;
+    });
+
+    // Use setTimeout to ensure this runs AFTER all setBlocks callbacks complete
+    // (including both Strict Mode calls)
+    setTimeout(() => {
+      if (!foundMatchRef.current) {
+        // No match was found - increment error count
         setErrorCount(prevErrors => {
           const newErrorCount = prevErrors + 1;
           if (newErrorCount >= maxErrors) {
@@ -136,9 +170,8 @@ export default function FallingBlocksGame() {
           }
           return newErrorCount;
         });
-        return prev;
       }
-    });
+    }, 0);
   }, [gameStarted, gameOver, startGame, maxErrors]);
 
   useEffect(() => {

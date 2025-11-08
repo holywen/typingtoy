@@ -34,7 +34,6 @@ export default function MultiplayerFallingWords({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
-      console.log('📥 [FALLING WORDS] Received game:state');
       setGameState(state);
       setGameStarted(true);
 
@@ -49,7 +48,6 @@ export default function MultiplayerFallingWords({
     const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
-      console.log('📝 Falling Words game ended, winner:', data.winner, 'finalState:', data.finalState);
     };
 
     const cleanupState = onSocketEvent('game:state', handleGameState);
@@ -141,6 +139,9 @@ export default function MultiplayerFallingWords({
         return current ? [current, ...others] : sortedPlayers;
       })();
 
+  // Check if current player finished but game is still ongoing
+  const isWaitingForOthers = currentPlayerState?.isFinished && !gameEnded;
+
   // Determine number of players for layout
   const playerCount = playerStates.size;
 
@@ -148,6 +149,96 @@ export default function MultiplayerFallingWords({
   const gridLayout = playerCount <= 2 ? 'grid-cols-1 md:grid-cols-2' :
                      playerCount === 3 ? 'grid-cols-1 md:grid-cols-3' :
                      'grid-cols-2 md:grid-cols-2';
+
+  // Show waiting screen if current player finished but others are still playing
+  if (isWaitingForOthers) {
+    const activePlayers = Array.from(playerStates.values()).filter(p => !p.isFinished);
+    const finishedPlayers = Array.from(playerStates.values()).filter(p => p.isFinished).sort((a, b) => b.score - a.score);
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-pink-900 to-purple-900">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center max-w-2xl">
+          <div className="text-6xl mb-6">⏳</div>
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Waiting for Other Players...
+          </h2>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+            You've finished! Please wait while others complete the game.
+          </p>
+
+          {/* Your Stats */}
+          <div className="mb-8 p-6 bg-pink-100 dark:bg-pink-900/30 rounded-lg border-2 border-pink-500">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Your Performance</h3>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Score</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.score}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">WPM</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(currentPlayerState?.currentWPM || 0)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Words</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {currentPlayerData?.wordsCompleted || 0}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.accuracy.toFixed(1)}%</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Players Still Playing */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+              Players Still Playing ({activePlayers.length})
+            </h3>
+            <div className="space-y-2">
+              {activePlayers.map(player => (
+                <div key={player.playerId} className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="font-semibold text-gray-900 dark:text-white">{player.displayName}</span>
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {player.score} pts | {Math.round(player.currentWPM)} WPM
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Finished Players */}
+          {finishedPlayers.length > 1 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+                Finished Players ({finishedPlayers.length})
+              </h3>
+              <div className="space-y-2">
+                {finishedPlayers.map(player => (
+                  <div key={player.playerId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg opacity-75">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        {player.displayName}
+                        {player.playerId === playerId && ' (You)'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {player.score} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-pink-900 to-purple-900 p-4">
@@ -275,21 +366,30 @@ export default function MultiplayerFallingWords({
                     <div className="font-bold text-white">{pState.accuracy.toFixed(0)}%</div>
                   </div>
                   <div>
+                    <div className="text-white/60">Err</div>
+                    <div className="font-bold text-white">{pData.errorCount}/{pData.maxErrors}</div>
+                  </div>
+                  <div>
                     <div className="text-white/60">Lost</div>
                     <div className="font-bold text-white">{pData.wordsLost}/{pData.maxLostWords}</div>
                   </div>
                 </div>
 
-                {/* Lives Progress Bar */}
+                {/* Health Progress Bar (shows worst of errors or lost words) */}
                 <div className="mt-2">
                   <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 ${
-                        pData.wordsLost >= pData.maxLostWords ? 'bg-red-500' :
-                        pData.wordsLost >= pData.maxLostWords * 0.7 ? 'bg-orange-500' :
+                        (pData.errorCount >= pData.maxErrors || pData.wordsLost >= pData.maxLostWords) ? 'bg-red-500' :
+                        (pData.errorCount / pData.maxErrors >= 0.7 || pData.wordsLost / pData.maxLostWords >= 0.7) ? 'bg-orange-500' :
                         'bg-green-500'
                       }`}
-                      style={{ width: `${((pData.maxLostWords - pData.wordsLost) / pData.maxLostWords) * 100}%` }}
+                      style={{
+                        width: `${Math.min(
+                          ((pData.maxErrors - pData.errorCount) / pData.maxErrors) * 100,
+                          ((pData.maxLostWords - pData.wordsLost) / pData.maxLostWords) * 100
+                        )}%`
+                      }}
                     />
                   </div>
                 </div>

@@ -229,20 +229,42 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
       );
 
       if (newLostWords.length > 0) {
-        // Player loses these words
+        // Create new playerData object with incremented counts (avoid mutation)
+        const updatedPlayerData: FallingWordsPlayerData = {
+          ...playerData,
+          wordsLost: playerData.wordsLost + newLostWords.length,
+          errorCount: playerData.errorCount + newLostWords.length,
+          lostWordIds: new Set(playerData.lostWordIds), // Copy the Set
+        };
+
+        // Add lost words to the new Set
         for (const word of newLostWords) {
-          playerData.lostWordIds.add(word.id);
-          playerData.wordsLost++;
+          updatedPlayerData.lostWordIds.add(word.id);
         }
 
-        playerState.lives = playerData.maxLostWords - playerData.wordsLost;
+        console.log(`💀 Player ${playerState.displayName} lost ${newLostWords.length} words. Total lost: ${updatedPlayerData.wordsLost}, Errors: ${updatedPlayerData.errorCount}/${updatedPlayerData.maxErrors}`);
 
-        console.log(`💀 Player ${playerState.displayName} lost ${newLostWords.length} words. Total lost: ${playerData.wordsLost}`);
-
-        // Check if player game over
-        if (playerData.wordsLost >= playerData.maxLostWords) {
-          console.log(`💀 Player ${playerState.displayName} GAME OVER (too many words lost)`);
-          playerState.isFinished = true;
+        // Check if player game over (either too many words lost OR too many errors)
+        if (updatedPlayerData.wordsLost >= updatedPlayerData.maxLostWords) {
+          console.log(`💀 Player ${playerState.displayName} GAME OVER (too many words lost: ${updatedPlayerData.wordsLost})`);
+          this.updatePlayerState(playerId, {
+            isFinished: true,
+            lives: 0,
+            gameSpecificData: updatedPlayerData,
+          });
+        } else if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
+          console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${updatedPlayerData.errorCount})`);
+          this.updatePlayerState(playerId, {
+            isFinished: true,
+            lives: updatedPlayerData.maxLostWords - updatedPlayerData.wordsLost,
+            gameSpecificData: updatedPlayerData,
+          });
+        } else {
+          // Update lives and game data
+          this.updatePlayerState(playerId, {
+            lives: updatedPlayerData.maxLostWords - updatedPlayerData.wordsLost,
+            gameSpecificData: updatedPlayerData,
+          });
         }
       }
     }
@@ -396,17 +418,29 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
           };
         } else {
           // Wrong character - cancel current word and increment error count
-          playerData.currentWordId = null;
-          playerData.typedProgress = '';
-          playerData.errorCount++;
+          // Create new object to avoid mutation
+          const updatedPlayerData: FallingWordsPlayerData = {
+            ...playerData,
+            currentWordId: null,
+            typedProgress: '',
+            errorCount: playerData.errorCount + 1,
+          };
           playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
           // Check if player exceeded max errors
-          if (playerData.errorCount >= playerData.maxErrors) {
-            console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${playerData.errorCount})`);
-            playerState.isFinished = true;
+          if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
+            console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${updatedPlayerData.errorCount})`);
+            this.updatePlayerState(playerId, {
+              isFinished: true,
+              accuracy: playerState.accuracy,
+              gameSpecificData: updatedPlayerData,
+            });
           } else {
-            console.log(`❌ ${playerState.displayName} made mistake, cancelled word (errors: ${playerData.errorCount}/${playerData.maxErrors})`);
+            console.log(`❌ ${playerState.displayName} made mistake, cancelled word (errors: ${updatedPlayerData.errorCount}/${updatedPlayerData.maxErrors})`);
+            this.updatePlayerState(playerId, {
+              accuracy: playerState.accuracy,
+              gameSpecificData: updatedPlayerData,
+            });
           }
 
           return {
@@ -466,13 +500,26 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
     }
 
     // No matching word found - increment error count
-    playerData.errorCount++;
+    // Create new object to avoid mutation
+    const updatedPlayerData: FallingWordsPlayerData = {
+      ...playerData,
+      errorCount: playerData.errorCount + 1,
+    };
     playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
     // Check if player exceeded max errors
-    if (playerData.errorCount >= playerData.maxErrors) {
-      console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${playerData.errorCount})`);
-      playerState.isFinished = true;
+    if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
+      console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${updatedPlayerData.errorCount})`);
+      this.updatePlayerState(playerId, {
+        isFinished: true,
+        accuracy: playerState.accuracy,
+        gameSpecificData: updatedPlayerData,
+      });
+    } else {
+      this.updatePlayerState(playerId, {
+        accuracy: playerState.accuracy,
+        gameSpecificData: updatedPlayerData,
+      });
     }
 
     return {

@@ -20,14 +20,17 @@ declare global {
   var mongoose: MongooseCache | undefined;
 }
 
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
-
+// Initialize global cache if not exists
 if (!global.mongoose) {
-  global.mongoose = cached;
+  global.mongoose = { conn: null, promise: null };
 }
 
 async function connectDB() {
+  // Always use the global cached reference to survive hot reloads
+  const cached = global.mongoose!;
+
   if (cached.conn) {
+    // Return cached connection without logging
     return cached.conn;
   }
 
@@ -36,20 +39,27 @@ async function connectDB() {
       bufferCommands: false,
     };
 
+    // Only log when actually creating a NEW connection
+    console.log('🔄 Creating new Mongoose connection...');
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((m) => {
       console.log('✅ MongoDB connected successfully');
+      cached.conn = m;
       return m;
+    }).catch((e) => {
+      // Clear the promise on error so we can retry
+      cached.promise = null;
+      cached.conn = null;
+      console.error('❌ MongoDB connection failed:', e);
+      throw e;
     });
   }
 
   try {
-    cached.conn = await cached.promise;
+    const conn = await cached.promise;
+    return conn;
   } catch (e) {
-    cached.promise = null;
     throw e;
   }
-
-  return cached.conn;
 }
 
 // Export both as default and named export for compatibility

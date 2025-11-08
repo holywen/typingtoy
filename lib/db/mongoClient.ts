@@ -9,45 +9,43 @@ if (!MONGODB_URI) {
 /**
  * Global is used here to maintain a cached connection across hot reloads in development.
  */
-type MongoClientCache = {
+/**
+ * MongoDB Client connection for NextAuth
+ * Following Next.js recommended pattern for global caching
+ * https://github.com/vercel/next.js/blob/canary/examples/with-mongodb/lib/mongodb.ts
+ */
+
+type CachedConnection = {
   conn: MongoClient | null;
   promise: Promise<MongoClient> | null;
 };
 
 declare global {
   // eslint-disable-next-line no-var
-  var mongoClient: MongoClientCache | undefined;
+  var _mongoClientCache: CachedConnection | undefined;
 }
 
-let cached: MongoClientCache = global.mongoClient || { conn: null, promise: null };
+let cached = global._mongoClientCache;
 
-if (!global.mongoClient) {
-  global.mongoClient = cached;
+if (!cached) {
+  cached = global._mongoClientCache = { conn: null, promise: null };
 }
 
-async function getMongoClient() {
-  if (cached.conn) {
-    return cached.conn;
+async function connectToDatabase(): Promise<MongoClient> {
+  if (cached!.conn) {
+    return cached!.conn;
   }
 
-  if (!cached.promise) {
-    const client = new MongoClient(MONGODB_URI);
-    cached.promise = client.connect().then((client) => {
-      console.log('✅ MongoDB Client connected successfully');
-      return client;
-    });
+  if (!cached!.promise) {
+    const opts = {};
+    cached!.promise = new MongoClient(MONGODB_URI, opts).connect();
   }
 
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
-
-  return cached.conn;
+  cached!.conn = await cached!.promise;
+  return cached!.conn;
 }
 
-const clientPromise = getMongoClient();
+// Export the connection promise for NextAuth MongoDBAdapter
+const clientPromise = connectToDatabase();
 
 export default clientPromise;

@@ -1,4 +1,5 @@
 // Keyboard layout data and finger position mapping
+import type { KeyboardLayout } from '@/types';
 
 export type FingerType = 'left-pinky' | 'left-ring' | 'left-middle' | 'left-index' | 'right-index' | 'right-middle' | 'right-ring' | 'right-pinky' | 'thumb';
 
@@ -731,7 +732,7 @@ export function getHandForFinger(finger: FingerType): 'left' | 'right' | 'both' 
 
 // Keyboard layout definitions
 export interface KeyboardLayoutInfo {
-  id: string;
+  id: KeyboardLayout;
   name: string;
   language: string;
   description: string;

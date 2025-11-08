@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { convertTextToLayout } from '@/lib/utils/layoutMapping';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { SpeedRaceGameState, SpeedRacePlayerData, GridCell, Position } from '@/lib/game-engine/SpeedRaceMultiplayer';
@@ -30,6 +32,25 @@ export default function MultiplayerSpeedRace({
   const [gameEnded, setGameEnded] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: 'correct' | 'error' | 'neutral' } | null>(null);
+  const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+
+  // Load keyboard layout from user settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setKeyboardLayout(settings.keyboardLayout);
+  }, []);
+
+  // Convert user input from their layout back to QWERTY for server validation
+  const convertInputToQwerty = useCallback((key: string): string => {
+    if (keyboardLayout === 'qwerty') return key;
+    const qwertyKeys = 'abcdefghijklmnopqrstuvwxyz;'.split('');
+    for (const qwertyKey of qwertyKeys) {
+      if (convertTextToLayout(qwertyKey, keyboardLayout) === key) {
+        return qwertyKey;
+      }
+    }
+    return key;
+  }, [keyboardLayout]);
 
   // Listen for game state updates
   useEffect(() => {
@@ -37,7 +58,6 @@ export default function MultiplayerSpeedRace({
     if (!socket) return;
 
     const handleGameState = (state: SerializedGameState) => {
-      console.log('📥 [SPEED RACE] Received game:state');
       setGameState(state);
       setGameStarted(true);
 
@@ -52,7 +72,6 @@ export default function MultiplayerSpeedRace({
     const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
-      console.log('🏁 Speed Race game ended, winner:', data.winner, 'finalState:', data.finalState);
     };
 
     const cleanupState = onSocketEvent('game:state', handleGameState);
@@ -76,13 +95,16 @@ export default function MultiplayerSpeedRace({
 
       e.preventDefault();
 
-      // Send keystroke to server
+      // Convert user input from their layout to QWERTY
+      const qwertyKey = convertInputToQwerty(key);
+
+      // Send QWERTY key to server
       emitSocketEvent('game:input', {
         roomId,
         input: {
           inputType: 'keystroke',
           timestamp: Date.now(),
-          data: { key },
+          data: { key: qwertyKey },
         },
       }, (response: any) => {
         if (response.success) {
@@ -107,7 +129,7 @@ export default function MultiplayerSpeedRace({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameStarted, gameEnded, roomId]);
+  }, [gameStarted, gameEnded, roomId, convertInputToQwerty]);
 
   if (!gameStarted || !gameState) {
     return (
@@ -131,6 +153,16 @@ export default function MultiplayerSpeedRace({
   const currentPlayerState = playerStates.get(playerId);
   const currentPlayerData = currentPlayerState?.gameSpecificData as SpeedRacePlayerData | undefined;
 
+  // Convert grid for display in user's layout
+  const displayGrid = useMemo(() => {
+    return raceState.grid.map(row =>
+      row.map(cell => ({
+        ...cell,
+        displayChar: convertTextToLayout(cell.char, keyboardLayout)
+      }))
+    );
+  }, [raceState.grid, keyboardLayout]);
+
   // Get all players sorted by progress (for ranking)
   const sortedPlayers = Array.from(playerStates.entries())
     .sort((a, b) => {
@@ -148,8 +180,104 @@ export default function MultiplayerSpeedRace({
         return current ? [current, ...others] : sortedPlayers;
       })();
 
+  // Check if current player finished but game is still ongoing
+  const isWaitingForOthers = currentPlayerState?.isFinished && !gameEnded;
+
   // Determine number of players for layout
   const playerCount = playerStates.size;
+
+  // Show waiting screen if current player finished but others are still playing
+  if (isWaitingForOthers) {
+    const activePlayers = Array.from(playerStates.values()).filter(p => !p.isFinished);
+    const finishedPlayers = Array.from(playerStates.values()).filter(p => p.isFinished).sort((a, b) => b.score - a.score);
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-900 to-teal-900">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center max-w-2xl">
+          <div className="text-6xl mb-6">⏳</div>
+          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Waiting for Other Players...
+          </h2>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
+            You've finished! Please wait while others complete the race.
+          </p>
+
+          {/* Your Stats */}
+          <div className="mb-8 p-6 bg-green-100 dark:bg-green-900/30 rounded-lg border-2 border-green-500">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3">Your Performance</h3>
+            <div className="grid grid-cols-2 gap-4 text-center">
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Score</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.score}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">WPM</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(currentPlayerState?.currentWPM || 0)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Progress</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {currentPlayerData?.pathIndex}/{raceState.totalPathLength}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Accuracy</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.accuracy.toFixed(1)}%</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Players Still Playing */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+              Players Still Racing ({activePlayers.length})
+            </h3>
+            <div className="space-y-2">
+              {activePlayers.map(player => {
+                const playerData = player.gameSpecificData as SpeedRacePlayerData;
+                return (
+                  <div key={player.playerId} className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-3 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                      <span className="font-semibold text-gray-900 dark:text-white">{player.displayName}</span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {playerData.pathIndex}/{raceState.totalPathLength}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Finished Players */}
+          {finishedPlayers.length > 1 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-3">
+                Finished Players ({finishedPlayers.length})
+              </h3>
+              <div className="space-y-2">
+                {finishedPlayers.map(player => (
+                  <div key={player.playerId} className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 p-3 rounded-lg opacity-75">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">
+                        {player.displayName}
+                        {player.playerId === playerId && ' (You)'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {player.score} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-900 to-teal-900 p-4">
@@ -288,7 +416,7 @@ export default function MultiplayerSpeedRace({
                     fontSize: playerCount > 2 ? '0.5rem' : '0.6rem',
                   }}
                 >
-                  {raceState.grid.map((row, rowIndex) =>
+                  {(isCurrentPlayer ? displayGrid : raceState.grid).map((row, rowIndex) =>
                     row.map((cell, colIndex) => {
                       const isPlayer = pData.currentRow === rowIndex && pData.currentCol === colIndex;
                       const isVisited = pData.visitedCells.some(v => v.row === rowIndex && v.col === colIndex);
@@ -308,7 +436,7 @@ export default function MultiplayerSpeedRace({
                             ${!isPlayer && !isNextTarget && !isVisited && !cell.isPath ? 'bg-gray-200 dark:bg-gray-800 text-gray-500 dark:text-gray-600' : ''}
                           `}
                         >
-                          {cell.char}
+                          {'displayChar' in cell ? (cell as any).displayChar : cell.char}
                         </div>
                       );
                     })
@@ -349,9 +477,9 @@ export default function MultiplayerSpeedRace({
               </div>
               <div className="text-6xl font-bold text-green-600 dark:text-green-400">
                 {currentPlayerData.pathIndex + 1 < raceState.pathSequence.length
-                  ? raceState.grid[raceState.pathSequence[currentPlayerData.pathIndex + 1].row][
+                  ? (displayGrid[raceState.pathSequence[currentPlayerData.pathIndex + 1].row][
                       raceState.pathSequence[currentPlayerData.pathIndex + 1].col
-                    ].char
+                    ] as any).displayChar
                   : '🏁'}
               </div>
             </div>

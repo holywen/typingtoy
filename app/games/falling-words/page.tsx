@@ -28,6 +28,7 @@ export default function FallingWordsGame() {
   const [maxErrors] = useState(10);
   const wordIdRef = useRef(0);
   const gameLoopRef = useRef<number | undefined>(undefined);
+  const foundMatchRef = useRef(false);
 
   // Get characters from selected lesson and generate word list
   useEffect(() => {
@@ -145,6 +146,9 @@ export default function FallingWordsGame() {
     // Ignore non-letter keys
     if (key.length !== 1 || !key.match(/[a-z]/)) return;
 
+    // Reset the ref at the start (for this new keystroke)
+    foundMatchRef.current = false;
+
     setWords(prev => {
       // Find the first word that matches the typed character
       const matchIndex = prev.findIndex(word => {
@@ -153,6 +157,9 @@ export default function FallingWordsGame() {
       });
 
       if (matchIndex !== -1) {
+        // Set ref to true to indicate match found
+        foundMatchRef.current = true;
+
         // Match found
         const updatedWords = [...prev];
         const matchedWord = { ...updatedWords[matchIndex] };
@@ -176,8 +183,16 @@ export default function FallingWordsGame() {
         }
 
         return updatedWords;
-      } else {
-        // No match found - increment error count
+      }
+
+      return prev;
+    });
+
+    // Use setTimeout to ensure this runs AFTER all setWords callbacks complete
+    // (including both Strict Mode calls)
+    setTimeout(() => {
+      if (!foundMatchRef.current) {
+        // No match was found - increment error count
         setErrorCount(prevErrors => {
           const newErrorCount = prevErrors + 1;
           if (newErrorCount >= maxErrors) {
@@ -185,9 +200,8 @@ export default function FallingWordsGame() {
           }
           return newErrorCount;
         });
-        return prev;
       }
-    });
+    }, 0);
   }, [gameStarted, gameOver, startGame, maxErrors]);
 
   useEffect(() => {

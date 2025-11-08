@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import TypingTest from '@/components/TypingTest';
 import { lessonsData } from '@/lib/data/lessons';
@@ -8,6 +8,7 @@ import { saveProgress, saveLastPosition, getLastPosition } from '@/lib/services/
 import { getUserSettings } from '@/lib/services/userSettings';
 import TipsBanner from '@/components/TipsBanner';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { convertTextToLayout, convertKeysToLayout } from '@/lib/utils/layoutMapping';
 import type { TypingSession } from '@/types';
 
 export default function LessonPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,13 +20,16 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
   const [isInitialized, setIsInitialized] = useState(false);
+  const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
 
-  // Load last position when component mounts - runs only once
+  // Load keyboard layout and last position when component mounts
   useEffect(() => {
+    const settings = getUserSettings();
+    setKeyboardLayout(settings.keyboardLayout);
+
     if (lesson && !isInitialized) {
-      const currentLayout = getUserSettings().keyboardLayout;
-      const lastPosition = getLastPosition(currentLayout);
-      
+      const lastPosition = getLastPosition(settings.keyboardLayout);
+
       if (lastPosition && lastPosition.lessonId === lesson.lessonNumber.toString()) {
         // Resume from last exercise if it's valid
         if (lastPosition.exerciseIndex < lesson.exercises.length) {
@@ -35,6 +39,24 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
       setIsInitialized(true);
     }
   }, [lesson, isInitialized]);
+
+  // Listen for keyboard layout changes via storage events
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const settings = getUserSettings();
+      setKeyboardLayout(settings.keyboardLayout);
+    };
+
+    // Listen for custom storage event
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event from same tab
+    window.addEventListener('keyboardLayoutChanged', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('keyboardLayoutChanged', handleStorageChange);
+    };
+  }, []);
 
   // Handle when user starts typing in an exercise
   const handleExerciseStart = () => {
@@ -60,6 +82,15 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
   const currentExercise = lesson.exercises[currentExerciseIndex];
   const previousLesson = lessonNumber > 1 ? lessonNumber - 1 : null;
   const nextLesson = lessonNumber < 15 ? lessonNumber + 1 : null;
+
+  // Convert exercise content and focus keys to current keyboard layout
+  const convertedExerciseContent = useMemo(() => {
+    return convertTextToLayout(currentExercise.content, keyboardLayout);
+  }, [currentExercise.content, keyboardLayout]);
+
+  const convertedFocusKeys = useMemo(() => {
+    return convertKeysToLayout(lesson.focusKeys, keyboardLayout);
+  }, [lesson.focusKeys, keyboardLayout]);
 
   const handleExerciseComplete = (session: TypingSession) => {
     setCompletedExercises(prev => new Set(prev).add(currentExerciseIndex));
@@ -136,7 +167,7 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
               </div>
               <div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">{t.lesson.focusKeys}: </span>
-                <span className="font-mono font-semibold">{lesson.focusKeys.join(', ')}</span>
+                <span className="font-mono font-semibold">{convertedFocusKeys.join(', ')}</span>
               </div>
               <div>
                 <span className="text-sm text-gray-600 dark:text-gray-400">{t.lesson.estimatedTime}: </span>
@@ -185,8 +216,8 @@ export default function LessonPage({ params }: { params: Promise<{ id: string }>
           </div>
 
           <TypingTest
-            key={currentExercise.id}
-            targetText={currentExercise.content}
+            key={`${currentExercise.id}-${keyboardLayout}`}
+            targetText={convertedExerciseContent}
             showKeyboard={true}
             showHandDiagram={true}
             onStart={handleExerciseStart}

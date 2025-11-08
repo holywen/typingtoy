@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { getLastPosition } from '@/lib/services/progressStorage';
 import { availableKeyboardLayouts } from '@/lib/data/keyboardLayout';
 import { getUserSettings, updateSetting } from '@/lib/services/userSettings';
+import { KeyboardLayout } from '@/types';
 import UserMenu from '@/components/UserMenu';
 import TipsBanner from '@/components/TipsBanner';
 import LanguageSelector from '@/components/LanguageSelector';
@@ -13,25 +15,94 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 export default function Home() {
   const { t } = useLanguage();
+  const { data: session, status } = useSession();
   const [resumeLink, setResumeLink] = useState('/lessons/1');
-  const [selectedLayout, setSelectedLayout] = useState('qwerty');
+  // Always initialize with 'qwerty' to avoid hydration mismatch
+  // The real value will be loaded in useEffect
+  const [selectedLayout, setSelectedLayout] = useState<KeyboardLayout>('qwerty');
+  const [hasLoadedSettings, setHasLoadedSettings] = useState(false);
 
   useEffect(() => {
-    // Load saved keyboard layout
-    const settings = getUserSettings();
-    setSelectedLayout(settings.keyboardLayout);
-    
-    // Check if there's a saved position for current layout
-    const lastPosition = getLastPosition(settings.keyboardLayout);
-    if (lastPosition) {
-      setResumeLink(`/lessons/${lastPosition.lessonId}`);
-    }
-  }, []);
+    // First, immediately load from localStorage to minimize flash
+    // This runs synchronously on first render (client-side only)
+    if (!hasLoadedSettings) {
+      const settings = getUserSettings();
+      const localLayout = settings.keyboardLayout;
+      setSelectedLayout(localLayout);
 
-  const handleLayoutSelect = (layoutId: string) => {
+      // Update resume link based on local layout
+      const lastPosition = getLastPosition(localLayout);
+      if (lastPosition) {
+        setResumeLink(`/lessons/${lastPosition.lessonId}`);
+      }
+    }
+
+    async function loadFromDatabase() {
+      // Wait for session to load
+      if (status === 'loading') {
+        return;
+      }
+
+      // Only load from database once
+      if (hasLoadedSettings) {
+        return;
+      }
+
+      // Try to load from database if authenticated
+      if (status === 'authenticated' && session?.user) {
+        try {
+          const response = await fetch('/api/user/settings');
+          if (response.ok) {
+            const data = await response.json();
+            const dbLayout = (data.settings?.keyboardLayout as KeyboardLayout) || null;
+
+            // Update if database has a different value
+            if (dbLayout && dbLayout !== selectedLayout) {
+              setSelectedLayout(dbLayout);
+
+              // Update resume link
+              const lastPosition = getLastPosition(dbLayout);
+              if (lastPosition) {
+                setResumeLink(`/lessons/${lastPosition.lessonId}`);
+              } else {
+                setResumeLink('/lessons/1');
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load keyboard layout from database:', error);
+        }
+      }
+
+      setHasLoadedSettings(true);
+    }
+
+    loadFromDatabase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const handleLayoutSelect = async (layoutId: KeyboardLayout) => {
     setSelectedLayout(layoutId);
-    updateSetting('keyboardLayout', layoutId as any);
-    
+    // Always save to localStorage
+    updateSetting('keyboardLayout', layoutId);
+
+    // Also save to database if authenticated
+    if (status === 'authenticated' && session?.user) {
+      try {
+        await fetch('/api/user/settings', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            settings: { keyboardLayout: layoutId },
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to save keyboard layout to database:', error);
+      }
+    }
+
     // Update resume link for the newly selected layout
     const lastPosition = getLastPosition(layoutId);
     if (lastPosition) {

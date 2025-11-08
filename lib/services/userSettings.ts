@@ -33,6 +33,13 @@ export function saveUserSettings(settings: Partial<UserSettings>): void {
     const currentSettings = getUserSettings();
     const newSettings = { ...currentSettings, ...settings };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+
+    // Dispatch custom event if keyboard layout changed
+    if ('keyboardLayout' in settings && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('keyboardLayoutChanged', {
+        detail: { layout: settings.keyboardLayout }
+      }));
+    }
   } catch (error) {
     console.error('Failed to save user settings:', error);
   }

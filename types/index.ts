@@ -84,11 +84,15 @@ export interface Achievement {
 // Keyboard layout types
 export type KeyboardLayout =
   | 'qwerty'
+  | 'qwerty-uk'
   | 'dvorak'
   | 'colemak'
   | 'workman'
+  | 'programmer'
   | 'azerty'
-  | 'qwertz';
+  | 'qwertz'
+  | 'spanish'
+  | 'latin';
 
 // Settings types
 export interface UserSettings {
