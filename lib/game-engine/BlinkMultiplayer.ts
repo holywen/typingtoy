@@ -261,8 +261,6 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       playerState.correctKeystrokes++;
       playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
-      console.log(`✅ ${playerState.displayName} answered correctly! +${totalPoints} points (${points} base + ${bonus} bonus), streak: ${playerData.streak}`);
-
       // Move this player to next character
       this.movePlayerToNextChar(playerId);
 
@@ -280,9 +278,6 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       // Moving charStartTime back makes the elapsed time appear longer
       const timePenalty = 300; // Reduce remaining time by 300ms
       playerData.charStartTime -= timePenalty;
-
-      console.log(`❌ ${playerState.displayName} answered incorrectly (pressed '${key}' instead of '${currentChar}')`);
-      console.log(`⏱️  Time penalty applied! Lost ${timePenalty}ms from current timer`);
 
       return {
         success: false,

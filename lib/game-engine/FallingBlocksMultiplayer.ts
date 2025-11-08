@@ -238,13 +238,6 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     
     // Remove blocks that reached bottom
     state.blocks = state.blocks.filter(b => !blocksToRemove.includes(b.id));
-    
-    // Check if all players finished
-    const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
-    if (allFinished) {
-      this.gameState.status = 'finished';
-      return;
-    }
 
     // Increase difficulty over time
     const minutesElapsed = this.gameState.elapsedTime / 60000;
@@ -284,8 +277,7 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     );
 
     if (matchingBlocks.length === 0) {
-
-      // Incorrect key - update metrics (this will increment errorCount in PlayerState)
+      // Incorrect key - update metrics
       const result = this.handleKeystroke(playerId, {
         ...keystroke,
         isCorrect: false,
@@ -296,10 +288,10 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
       const currentPlayerData = updatedPlayerState?.gameSpecificData as FallingBlocksPlayerData;
 
       if (updatedPlayerState && currentPlayerData) {
-        // Increment error count in gameSpecificData (don't use PlayerState.errorCount)
+        // Increment error count in gameSpecificData
         const updatedPlayerData: FallingBlocksPlayerData = {
-          ...currentPlayerData,  // Use FRESH data (includes blocks missed counts)
-          errorCount: currentPlayerData.errorCount + 1,  // Increment game-specific error
+          ...currentPlayerData,
+          errorCount: currentPlayerData.errorCount + 1,
         };
 
         // Check if player exceeded max errors
@@ -309,7 +301,6 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
             gameSpecificData: updatedPlayerData,
           });
         } else {
-          // Save updated error count
           this.updatePlayerState(playerId, {
             gameSpecificData: updatedPlayerData,
           });
@@ -364,10 +355,11 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
    * Check win condition
    */
   checkWinCondition(): string | null {
-    const state = this.gameState.gameSpecificState as FallingBlocksGameState;
+    // Check if all players have finished (reached max errors)
+    const players = Array.from(this.gameState.players.values());
+    const allFinished = players.every(p => p.isFinished);
 
-    // Game ends if too many blocks missed
-    if (state.totalBlocksMissed >= state.maxMissedBlocks) {
+    if (allFinished) {
       // Find player with highest score
       const sortedPlayers = Array.from(this.gameState.players.entries())
         .sort(([, a], [, b]) => b.score - a.score);
@@ -392,7 +384,7 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
       return null; // No winner if everyone disconnected
     }
 
-    return null; // Continue until time limit or too many missed
+    return null; // Continue until all players finish
   }
   
   /**

@@ -242,18 +242,14 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
           updatedPlayerData.lostWordIds.add(word.id);
         }
 
-        console.log(`💀 Player ${playerState.displayName} lost ${newLostWords.length} words. Total lost: ${updatedPlayerData.wordsLost}, Errors: ${updatedPlayerData.errorCount}/${updatedPlayerData.maxErrors}`);
-
         // Check if player game over (either too many words lost OR too many errors)
         if (updatedPlayerData.wordsLost >= updatedPlayerData.maxLostWords) {
-          console.log(`💀 Player ${playerState.displayName} GAME OVER (too many words lost: ${updatedPlayerData.wordsLost})`);
           this.updatePlayerState(playerId, {
             isFinished: true,
             lives: 0,
             gameSpecificData: updatedPlayerData,
           });
         } else if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
-          console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${updatedPlayerData.errorCount})`);
           this.updatePlayerState(playerId, {
             isFinished: true,
             lives: updatedPlayerData.maxLostWords - updatedPlayerData.wordsLost,
@@ -324,8 +320,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
     state.words.push(newWord);
     state.nextWordIndex++;
-
-    console.log(`📝 Spawned word "${word}" (ID: ${newWord.id}) at (${newWord.x.toFixed(0)}%, 0%)`);
   }
 
   /**
@@ -403,7 +397,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
             if (allPlayersProcessed) {
               state.words = state.words.filter(w => w.id !== completedWordId);
-              console.log(`🗑️ Word "${targetWord.word}" removed (all players processed)`);
             }
 
             return {
@@ -429,14 +422,12 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
           // Check if player exceeded max errors
           if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
-            console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${updatedPlayerData.errorCount})`);
             this.updatePlayerState(playerId, {
               isFinished: true,
               accuracy: playerState.accuracy,
               gameSpecificData: updatedPlayerData,
             });
           } else {
-            console.log(`❌ ${playerState.displayName} made mistake, cancelled word (errors: ${updatedPlayerData.errorCount}/${updatedPlayerData.maxErrors})`);
             this.updatePlayerState(playerId, {
               accuracy: playerState.accuracy,
               gameSpecificData: updatedPlayerData,
@@ -473,8 +464,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
         playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
 
-        console.log(`✅ ${playerState.displayName} completed word "${targetWord.word}"!`);
-
         // Check if all players have completed or lost this word, then remove it
         const completedWordId = targetWord.id;
         const allPlayersProcessed = Array.from(this.gameState.players.values()).every(p => {
@@ -484,7 +473,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
         if (allPlayersProcessed) {
           state.words = state.words.filter(w => w.id !== completedWordId);
-          console.log(`🗑️ Word "${targetWord.word}" removed (all players processed)`);
         }
 
         return {
@@ -509,7 +497,6 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
     // Check if player exceeded max errors
     if (updatedPlayerData.errorCount >= updatedPlayerData.maxErrors) {
-      console.log(`❌ Player ${playerState.displayName} GAME OVER (too many errors: ${updatedPlayerData.errorCount})`);
       this.updatePlayerState(playerId, {
         isFinished: true,
         accuracy: playerState.accuracy,

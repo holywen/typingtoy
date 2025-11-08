@@ -253,8 +253,6 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
       const points = 10;
       playerState.score += points;
 
-      console.log(`✅ ${playerState.displayName} moved to (${nextPos.row}, ${nextPos.col}), progress: ${nextPathIndex}/${state.totalPathLength}`);
-
       return {
         success: true,
       };
@@ -263,8 +261,6 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
       playerData.remainingLives--;
       playerState.lives = playerData.remainingLives;
       playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
-
-      console.log(`❌ ${playerState.displayName} typed wrong key (expected '${nextCell.char}', got '${key}'). Lives: ${playerData.remainingLives}`);
 
       if (playerData.remainingLives <= 0) {
         playerState.isFinished = true;
