@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { GameRoom } from '@/types/multiplayer';
@@ -27,6 +27,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [gameActive, setGameActive] = useState(false);
+  const gameActiveRef = useRef(false); // Track gameActive in ref for cleanup functions
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
 
@@ -234,6 +235,11 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     };
   }, [roomId, playerId, router]);
 
+  // Sync gameActive state to ref
+  useEffect(() => {
+    gameActiveRef.current = gameActive;
+  }, [gameActive]);
+
   const handleLeaveRoom = () => {
     emitSocketEvent('room:leave', { roomId });
     router.push('/multiplayer');
@@ -245,7 +251,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
     const handleBeforeUnload = () => {
       // Only leave if NOT in active game
-      if (!gameActive) {
+      if (!gameActiveRef.current) {
         const socket = getSocket();
         if (socket?.connected) {
           console.log('🚪 [BEFOREUNLOAD] Leaving room:', roomId);
@@ -262,8 +268,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       window.removeEventListener('beforeunload', handleBeforeUnload);
 
       // Send leave event when component unmounts (e.g., navigating back to lobby)
-      // Only if NOT in active game
-      if (!gameActive) {
+      // Only if NOT in active game (check current ref value at unmount time)
+      if (!gameActiveRef.current) {
         const socket = getSocket();
         if (socket?.connected) {
           console.log('🚪 [UNMOUNT] Leaving room:', roomId);
@@ -271,7 +277,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         }
       }
     };
-  }, [roomId, playerId, gameActive]);
+  }, [roomId, playerId]); // Removed gameActive from dependencies to prevent re-running on game start
 
   const handleToggleReady = () => {
     const player = room?.players.find(p => p.playerId === playerId);
