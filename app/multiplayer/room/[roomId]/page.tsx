@@ -241,37 +241,28 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
 
   // Force leave room on page unload (refresh/close/navigate away)
   useEffect(() => {
-    if (!roomId || !playerId || gameActive) return;
+    if (!roomId || !playerId) return;
 
     const handleBeforeUnload = () => {
-      const socket = getSocket();
-      if (socket?.connected) {
-        console.log('🚪 [BEFOREUNLOAD] Leaving room:', roomId);
-        // Synchronous leave event (best effort)
-        socket.emit('room:leave', { roomId });
-      }
-    };
-
-    // Also send leave event when navigating away (more reliable than beforeunload)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
+      // Only leave if NOT in active game
+      if (!gameActive) {
         const socket = getSocket();
         if (socket?.connected) {
-          console.log('🚪 [VISIBILITY] Leaving room:', roomId);
+          console.log('🚪 [BEFOREUNLOAD] Leaving room:', roomId);
+          // Synchronous leave event (best effort)
           socket.emit('room:leave', { roomId });
         }
       }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Cleanup on component unmount (navigation away)
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       // Send leave event when component unmounts (e.g., navigating back to lobby)
+      // Only if NOT in active game
       if (!gameActive) {
         const socket = getSocket();
         if (socket?.connected) {
