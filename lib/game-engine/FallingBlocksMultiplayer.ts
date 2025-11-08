@@ -35,8 +35,6 @@ export interface FallingBlocksGameState {
   characters: string[];      // Available characters to spawn
   maxBlocksOnScreen: number;
   lastSpawnTime: number;
-  totalBlocksMissed: number; // Total blocks that hit bottom
-  maxMissedBlocks: number;   // Game over threshold
 }
 
 /**
@@ -85,8 +83,6 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
       characters,
       maxBlocksOnScreen: 10,
       lastSpawnTime: 0,
-      totalBlocksMissed: 0,
-      maxMissedBlocks: 10, // Game over after 10 missed blocks
     };
     
     this.gameState.gameSpecificState = gameSpecificState;
@@ -204,7 +200,6 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
       // Check if block reached bottom
       if (block.y >= 100) {
         blocksToRemove.push(block.id);
-        state.totalBlocksMissed++;
 
         // Penalize the player who owns this block (if still active)
         const playerState = this.getPlayerState(block.playerId);
@@ -337,7 +332,7 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
       blocksDestroyed: currentPlayerData.blocksDestroyed + 1,
     };
 
-    const pointsEarned = 10 + (closestBlock.y > 80 ? 5 : 0); // Bonus for last-second saves
+    const pointsEarned = closestBlock.y < 20 ? 15 : 10; // Bonus for early hits
 
     this.updatePlayerState(playerId, {
       score: freshPlayerState.score + pointsEarned,
