@@ -140,6 +140,9 @@ export default function MultiplayerPage() {
 
     // Note: We don't disconnect the socket on unmount because
     // the user might be navigating to a room page that needs the socket
+
+    // Note: Server automatically removes players from rooms when they connect to lobby
+    // See socketServer.ts:139-159 - cleanups stale room memberships on connection
   }, [session?.user?.id, status]); // Wait for session to load, then init once with final userId
 
   if (isBanned) {

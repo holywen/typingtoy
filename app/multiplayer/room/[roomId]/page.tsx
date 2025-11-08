@@ -164,6 +164,20 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     const handleRoomUpdated = (data: { room: GameRoom }) => {
       if (data.room.roomId === roomId) {
         setRoom(data.room);
+
+        // Update isHost status when room updates (e.g., when promoted to host)
+        const player = data.room.players.find((p: any) => p.playerId === playerId);
+        if (player) {
+          const newIsHost = player.isHost || false;
+          if (newIsHost !== isHost) {
+            console.log('🔄 [ROOM UPDATE] isHost changed:', {
+              playerId,
+              oldIsHost: isHost,
+              newIsHost
+            });
+            setIsHost(newIsHost);
+          }
+        }
       }
     };
 
@@ -233,7 +247,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       cleanupStarted();
       cleanupDeleted();
     };
-  }, [roomId, playerId, router]);
+  }, [roomId, playerId, isHost, router]);
 
   // Sync gameActive state to ref
   useEffect(() => {
