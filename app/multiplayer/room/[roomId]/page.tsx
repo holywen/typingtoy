@@ -27,6 +27,8 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [gameActive, setGameActive] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
 
   // Check authentication before initializing
   useEffect(() => {
@@ -49,6 +51,24 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     }
 
     async function init() {
+      // Check if user is banned (only for authenticated users)
+      if (session?.user?.id) {
+        try {
+          const response = await fetch('/api/user/ban-status');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.banned) {
+              setIsBanned(true);
+              setBanReason(data.banReason);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Failed to check ban status:', error);
+        }
+      }
+
       const identity = await getDeviceIdentity();
       // Use the same playerId logic as the server: userId || deviceId
       const actualPlayerId = session?.user?.id || identity.deviceId;
@@ -255,6 +275,35 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     });
   };
+
+  if (isBanned) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-4">
+            <div className="text-5xl mb-4">🚫</div>
+            <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-2">
+              {t.admin.bannedFromMultiplayer}
+            </h2>
+            {banReason && (
+              <p className="text-red-600 dark:text-red-300 mb-2">
+                <strong>{t.admin.banReason}:</strong> {banReason}
+              </p>
+            )}
+            <p className="text-red-600 dark:text-red-300 text-sm">
+              {t.admin.contactAdmin}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t.common.backToHome}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

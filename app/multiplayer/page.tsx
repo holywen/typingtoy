@@ -15,6 +15,8 @@ export default function MultiplayerPage() {
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [deviceIdentity, setDeviceIdentity] = useState<any>(null);
+  const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
 
   useEffect(() => {
     // Don't initialize while session is still loading
@@ -30,6 +32,24 @@ export default function MultiplayerPage() {
 
     async function initialize() {
       try {
+        // Check if user is banned (only for authenticated users)
+        if (session?.user?.id) {
+          try {
+            const response = await fetch('/api/user/ban-status');
+            if (response.ok) {
+              const data = await response.json();
+              if (data.banned) {
+                setIsBanned(true);
+                setBanReason(data.banReason);
+                setIsConnecting(false);
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check ban status:', error);
+          }
+        }
+
         // Get device identity
         const identity = await getDeviceIdentity();
         setDeviceIdentity(identity);
@@ -121,6 +141,35 @@ export default function MultiplayerPage() {
     // Note: We don't disconnect the socket on unmount because
     // the user might be navigating to a room page that needs the socket
   }, [session?.user?.id, status]); // Wait for session to load, then init once with final userId
+
+  if (isBanned) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-4">
+            <div className="text-5xl mb-4">🚫</div>
+            <h2 className="text-2xl font-bold text-red-800 dark:text-red-200 mb-2">
+              {t.admin.bannedFromMultiplayer}
+            </h2>
+            {banReason && (
+              <p className="text-red-600 dark:text-red-300 mb-2">
+                <strong>{t.admin.banReason}:</strong> {banReason}
+              </p>
+            )}
+            <p className="text-red-600 dark:text-red-300 text-sm">
+              {t.admin.contactAdmin}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {t.common.backToHome}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isConnecting) {
     return (

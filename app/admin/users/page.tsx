@@ -12,6 +12,8 @@ interface User {
   role: 'user' | 'admin';
   createdAt: string;
   emailVerified?: string | null;
+  banned?: boolean;
+  banReason?: string;
 }
 
 interface Pagination {
