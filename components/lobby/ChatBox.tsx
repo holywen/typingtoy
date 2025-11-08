@@ -108,36 +108,48 @@ export default function ChatBox({ playerId, displayName, roomId }: ChatBoxProps)
           </div>
         ) : (
           messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`${
-                msg.playerId === playerId
-                  ? 'flex justify-end'
-                  : 'flex justify-start'
-              }`}
-            >
-              <div
-                className={`max-w-[80%] ${
-                  msg.playerId === playerId
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                } rounded-lg px-3 py-2`}
-              >
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-xs font-semibold">
-                      {msg.playerId === playerId ? t.multiplayer.you : msg.displayName}
-                    </span>
-                    <span className={`text-xs ${
-                      msg.playerId === playerId
-                        ? 'text-blue-200'
-                        : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {formatTime(msg.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-sm break-words">{msg.message}</p>
+            msg.isSystem ? (
+              // System message (join/leave notifications)
+              <div key={index} className="flex justify-center my-2">
+                <div className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-full">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                    {msg.message}
+                  </p>
                 </div>
-            </div>
+              </div>
+            ) : (
+              // Regular user message
+              <div
+                key={index}
+                className={`${
+                  msg.playerId === playerId
+                    ? 'flex justify-end'
+                    : 'flex justify-start'
+                }`}
+              >
+                <div
+                  className={`max-w-[80%] ${
+                    msg.playerId === playerId
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                  } rounded-lg px-3 py-2`}
+                >
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-xs font-semibold">
+                        {msg.playerId === playerId ? t.multiplayer.you : msg.displayName}
+                      </span>
+                      <span className={`text-xs ${
+                        msg.playerId === playerId
+                          ? 'text-blue-200'
+                          : 'text-gray-500 dark:text-gray-400'
+                      }`}>
+                        {formatTime(msg.timestamp)}
+                      </span>
+                    </div>
+                    <p className="text-sm break-words">{msg.message}</p>
+                  </div>
+              </div>
+            )
           ))
         )}
         <div ref={messagesEndRef} />

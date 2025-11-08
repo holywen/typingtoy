@@ -5,6 +5,37 @@ import { ChatCache } from '@/lib/redis/chatCache';
 import { ChatMessage } from '@/types/multiplayer';
 import { ProfanityFilter } from '@/lib/utils/profanityFilter';
 
+/**
+ * Send a system message to lobby or room chat
+ */
+export async function sendSystemMessage(
+  io: TypedServer,
+  type: 'lobby' | 'room',
+  message: string,
+  roomId?: string
+): Promise<void> {
+  const systemMessage: ChatMessage = {
+    id: `system_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type,
+    roomId,
+    playerId: 'system',
+    displayName: 'System',
+    message,
+    timestamp: Date.now(),
+    isSystem: true,
+  };
+
+  // Save to cache
+  await ChatCache.saveMessage(systemMessage);
+
+  // Broadcast message
+  if (type === 'lobby') {
+    io.emit('chat:message', systemMessage);
+  } else if (type === 'room' && roomId) {
+    io.to(roomId).emit('chat:message', systemMessage);
+  }
+}
+
 export function registerChatHandlers(io: TypedServer, socket: TypedSocket): void {
   // Send chat message
   socket.on('chat:send', async (data, callback) => {

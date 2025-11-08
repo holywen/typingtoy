@@ -187,4 +187,5 @@ export interface ChatMessage {
   displayName: string;
   message: string;
   timestamp: number;
+  isSystem?: boolean; // System messages (join/leave notifications)
 }

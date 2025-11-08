@@ -171,6 +171,10 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     // Broadcast updated online players list
     await broadcastOnlinePlayers();
 
+    // Send lobby join system message
+    const { sendSystemMessage } = await import('./socketHandlers/chatHandlers');
+    await sendSystemMessage(io!, 'lobby', `${displayName} joined the lobby`);
+
     // Handle player identification
     socket.on('player:identify', (data) => {
       socket.data.userId = data.userId;
@@ -206,6 +210,10 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
             // Notify remaining players
             io!.to(roomId).emit('room:updated', { room });
             io!.to(roomId).emit('player:left', { roomId, playerId });
+
+            // Send system message to room chat
+            const { sendSystemMessage } = await import('./socketHandlers/chatHandlers');
+            await sendSystemMessage(io!, 'room', `${displayName} left the room`, roomId);
           } else {
             // Room was deleted
             io!.emit('room:deleted', { roomId });
@@ -224,6 +232,10 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
         }
         // Broadcast updated online players list
         await broadcastOnlinePlayers();
+
+        // Send lobby leave system message
+        const { sendSystemMessage } = await import('./socketHandlers/chatHandlers');
+        await sendSystemMessage(io!, 'lobby', `${displayName} left the lobby`);
       } catch (error) {
         console.error(`Error during disconnect cleanup for ${displayName}:`, error);
       }
