@@ -59,6 +59,10 @@ export interface ClientToServerEvents {
     deviceId: string;
     displayName: string;
   }) => void;
+
+  // Lobby presence management
+  'lobby:viewing-leaderboard': (data: { playerId: string }) => void;
+  'lobby:left-leaderboard': (data: { playerId: string }) => void;
 }
 
 // Server to Client Events

@@ -40,7 +40,7 @@ export default function CreateRoomDialog({ gameType, playerId, displayName, onCl
       password: isPrivate ? password : undefined,
       maxPlayers,
       settings: {
-        lessonNumber: selectedLesson,
+        lessonId: selectedLesson,
       },
     }, (response) => {
       if (response.success) {

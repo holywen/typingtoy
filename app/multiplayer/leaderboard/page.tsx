@@ -3,13 +3,14 @@
 // Multiplayer Leaderboard Page
 // Display rankings and player statistics
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import LeaderboardPanel from '@/components/leaderboard/LeaderboardPanel';
 import PlayerStats from '@/components/leaderboard/PlayerStats';
 import { ArrowLeft, BarChart3, Trophy } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { getSocket } from '@/lib/services/socketClient';
 
 export default function LeaderboardPage() {
   const { t } = useLanguage();
@@ -18,6 +19,29 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'global' | 'stats'>('global');
 
   const playerId = session?.user?.id;
+
+  // Manage lobby presence - remove from lobby when on leaderboard
+  useEffect(() => {
+    const socket = getSocket();
+
+    // When entering leaderboard, send a custom event to server
+    // to temporarily remove from lobby online players
+    if (socket?.connected && playerId) {
+      console.log('📊 [LEADERBOARD] Entered leaderboard, notifying server');
+      socket.emit('lobby:viewing-leaderboard', { playerId });
+    }
+
+    // When leaving leaderboard, notify server to rejoin lobby
+    return () => {
+      if (socket?.connected && playerId) {
+        const isStayingInMultiplayer = window.location.pathname.startsWith('/multiplayer');
+        if (isStayingInMultiplayer) {
+          console.log('📊 [LEADERBOARD] Leaving leaderboard, notifying server');
+          socket.emit('lobby:left-leaderboard', { playerId });
+        }
+      }
+    };
+  }, [playerId]);
 
   // Redirect to signin if not authenticated
   if (status === 'unauthenticated') {

@@ -181,6 +181,26 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       socket.data.playerId = data.userId || data.deviceId;
     });
 
+    // Handle lobby presence management for leaderboard viewing
+    socket.on('lobby:viewing-leaderboard', async (data) => {
+      console.log(`📊 Player ${displayName} viewing leaderboard`);
+      const { LobbyEventManager } = await import('./lobbyEventManager');
+      await LobbyEventManager.handlePlayerLeave(io!, {
+        playerId,
+        playerName: displayName,
+      });
+    });
+
+    socket.on('lobby:left-leaderboard', async (data) => {
+      console.log(`📊 Player ${displayName} left leaderboard, rejoining lobby`);
+      const { LobbyEventManager } = await import('./lobbyEventManager');
+      await LobbyEventManager.handlePlayerJoin(io!, {
+        playerId,
+        playerName: displayName,
+        socketId: socket.id,
+      });
+    });
+
     // Handle disconnection
     socket.on('disconnect', async (reason) => {
       console.log(`❌ Player disconnected: ${displayName} (${reason})`);
