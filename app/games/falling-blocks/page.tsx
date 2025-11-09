@@ -45,15 +45,39 @@ export default function FallingBlocksGame() {
   const spawnBlock = useCallback(() => {
     if (chars.length === 0) return;
 
-    const newBlock: FallingBlock = {
-      id: blockIdRef.current++,
-      char: chars[Math.floor(Math.random() * chars.length)],
-      x: Math.random() * 80 + 10, // 10-90% of width
-      y: 0,
-      speed: 0.5 + level * 0.1,
-    };
+    setBlocks(prev => {
+      // Find occupied x positions in the top 30% of screen
+      const occupiedX = prev
+        .filter(block => block.y < 30)
+        .map(block => block.x);
 
-    setBlocks(prev => [...prev, newBlock]);
+      // Generate x position that doesn't overlap with existing blocks
+      let x: number;
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      do {
+        x = Math.random() * 80 + 10; // 10-90% of width
+        attempts++;
+
+        // Check if this x is too close to any occupied position (within 15%)
+        const isTooClose = occupiedX.some(occupied => Math.abs(occupied - x) < 15);
+
+        if (!isTooClose || attempts >= maxAttempts) {
+          break;
+        }
+      } while (attempts < maxAttempts);
+
+      const newBlock: FallingBlock = {
+        id: blockIdRef.current++,
+        char: chars[Math.floor(Math.random() * chars.length)],
+        x,
+        y: 0,
+        speed: 0.5 + level * 0.1,
+      };
+
+      return [...prev, newBlock];
+    });
   }, [chars, level]);
 
   const gameLoop = useCallback(() => {
@@ -94,10 +118,13 @@ export default function FallingBlocksGame() {
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
-      // Spawn blocks periodically
+      // Spawn blocks periodically with exponential decrease
+      // Each level reduces interval by 10% with minimum of 200ms
+      const baseInterval = 2000;
+      const interval = Math.max(200, baseInterval * Math.pow(0.9, level - 1));
       const spawnInterval = setInterval(() => {
         spawnBlock();
-      }, 2000 - level * 100);
+      }, interval);
 
       // Game loop
       gameLoopRef.current = window.setInterval(gameLoop, 50);

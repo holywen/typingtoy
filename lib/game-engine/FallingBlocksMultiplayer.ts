@@ -152,7 +152,29 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     const char = state.characters[
       this.rng.nextInt(0, state.characters.length - 1)
     ];
-    const x = this.rng.nextFloat(10, 90);
+
+    // Find occupied x positions in the top 30% of screen (across all players)
+    const occupiedX = state.blocks
+      .filter(b => b.y < 30)
+      .map(b => b.x);
+
+    // Generate x position that doesn't overlap with existing blocks
+    let x: number;
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    do {
+      x = this.rng.nextFloat(10, 90);
+      attempts++;
+
+      // Check if this x is too close to any occupied position (within 15%)
+      const isTooClose = occupiedX.some(occupied => Math.abs(occupied - x) < 15);
+
+      if (!isTooClose || attempts >= maxAttempts) {
+        break;
+      }
+    } while (attempts < maxAttempts);
+
     const speed = (0.5 + this.gameState.players.size * 0.05) * state.gameSpeed;
 
     // Create identical block for each player
@@ -243,8 +265,10 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
         this.updatePlayerState(playerId, { level: newLevel });
       }
 
-      // Adjust spawn rate and speed
-      state.spawnInterval = Math.max(1000, 2000 - newLevel * 100);
+      // Adjust spawn rate and speed with exponential decrease
+      // Each level reduces interval by 10% with minimum of 200ms
+      const baseInterval = 2000;
+      state.spawnInterval = Math.max(200, baseInterval * Math.pow(0.9, newLevel - 1));
       state.gameSpeed = 1 + newLevel * 0.1;
     }
   }
