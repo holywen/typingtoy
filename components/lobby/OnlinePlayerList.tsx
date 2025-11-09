@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { onSocketEvent, offSocketEvent, emitSocketEvent, getSocket } from '@/lib/services/socketClient';
+import { onSocketEvent } from '@/lib/services/socketClient';
 
 interface OnlinePlayer {
   playerId: string;
@@ -11,38 +11,44 @@ interface OnlinePlayer {
 
 export default function OnlinePlayerList() {
   const [players, setPlayers] = useState<OnlinePlayer[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('🎯 [OnlinePlayerList] Component mounted, setting up listener');
+    console.log('🎯 [OnlinePlayerList] Component mounted');
 
-    // Listen for online players updates
+    // Fetch initial player list from API
+    const fetchPlayers = async () => {
+      try {
+        console.log('📡 [OnlinePlayerList] Fetching initial player list from API');
+        const response = await fetch('/api/lobby/players');
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ [OnlinePlayerList] Received initial player list:', data.count, 'players');
+        setPlayers(data.players || []);
+      } catch (error) {
+        console.error('❌ [OnlinePlayerList] Failed to fetch initial player list:', error);
+        setPlayers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPlayers();
+
+    // Listen for real-time updates via socket events
     const handlePlayersUpdate = (data: { players: OnlinePlayer[] }) => {
-      console.log('📥 [OnlinePlayerList] Received player update:', data.players.length, 'players');
+      console.log('🔄 [OnlinePlayerList] Received real-time update:', data.players.length, 'players');
       setPlayers(data.players);
     };
 
     const cleanupUpdate = onSocketEvent('lobby:players', handlePlayersUpdate);
 
-    // Request initial player list - wait for socket connection
-    const requestPlayerList = () => {
-      const socket = getSocket();
-      if (socket?.connected) {
-        console.log('📤 [OnlinePlayerList] Requesting initial player list');
-        emitSocketEvent('lobby:request-players');
-      } else {
-        console.log('⏳ [OnlinePlayerList] Socket not connected, waiting...');
-        // Wait for connection and try again
-        socket?.once('connect', () => {
-          console.log('✅ [OnlinePlayerList] Socket connected, requesting player list');
-          emitSocketEvent('lobby:request-players');
-        });
-      }
-    };
-
-    requestPlayerList();
-
     return () => {
-      console.log('🧹 [OnlinePlayerList] Component unmounting, cleaning up');
+      console.log('🧹 [OnlinePlayerList] Component unmounting');
       cleanupUpdate();
     };
   }, []);
@@ -80,12 +86,17 @@ export default function OnlinePlayerList() {
           Online Players
         </h2>
         <span className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-sm font-medium">
-          {players.length}
+          {loading ? '...' : players.length}
         </span>
       </div>
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
-        {players.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-sm">Loading players...</p>
+          </div>
+        ) : players.length === 0 ? (
           <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />

@@ -225,13 +225,6 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       });
     });
 
-    // Handle request for current online players list
-    socket.on('lobby:request-players', async () => {
-      console.log(`📋 [LOBBY] Player ${displayName} requesting current player list`);
-      const { LobbyEventManager } = await import('./lobbyEventManager');
-      await LobbyEventManager.sendPlayerListToSocket(socket);
-    });
-
     // Handle disconnection
     socket.on('disconnect', async (reason) => {
       console.log(`❌ Player disconnected: ${displayName} (${reason})`);
