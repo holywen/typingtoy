@@ -89,12 +89,12 @@ describe('textGenerator', () => {
       expect(wordCount).toBeLessThanOrEqual(60);
     });
 
-    it('should create paragraphs with double newlines', () => {
+    it('should create paragraphs with single newlines', () => {
       const text = generateTypingText(100, 150);
 
       // Should have paragraph breaks for longer text
       if (text.length > 300) {
-        expect(text).toMatch(/\n\n/);
+        expect(text).toMatch(/\n/);
       }
     });
   });

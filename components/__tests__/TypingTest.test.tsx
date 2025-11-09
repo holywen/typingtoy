@@ -79,6 +79,9 @@ describe('TypingTest Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Mock scrollIntoView which is not available in jsdom
+    Element.prototype.scrollIntoView = jest.fn();
   });
 
   describe('Rendering', () => {
