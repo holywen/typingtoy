@@ -10,7 +10,8 @@ import LeaderboardPanel from '@/components/leaderboard/LeaderboardPanel';
 import PlayerStats from '@/components/leaderboard/PlayerStats';
 import { ArrowLeft, BarChart3, Trophy } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { getSocket } from '@/lib/services/socketClient';
+import { getSocket, initSocketClient } from '@/lib/services/socketClient';
+import { getDeviceIdentity } from '@/lib/services/deviceId';
 
 export default function LeaderboardPage() {
   const { t } = useLanguage();
@@ -19,20 +20,69 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<'global' | 'stats'>('global');
 
   const playerId = session?.user?.id;
+  const [hasNotifiedServer, setHasNotifiedServer] = useState(false);
 
   // Manage lobby presence - remove from lobby when on leaderboard
   useEffect(() => {
-    const socket = getSocket();
-
-    // When entering leaderboard, send a custom event to server
-    // to temporarily remove from lobby online players
-    if (socket?.connected && playerId) {
-      console.log('📊 [LEADERBOARD] Entered leaderboard, notifying server');
-      socket.emit('lobby:viewing-leaderboard', { playerId });
+    // Wait for session to load and playerId to be available
+    if (status === 'loading' || !playerId) {
+      return;
     }
 
-    // When leaving leaderboard, notify server to rejoin lobby
+    // Prevent duplicate notifications
+    if (hasNotifiedServer) {
+      return;
+    }
+
+    async function setupSocketAndNotify() {
+      try {
+        // Get or initialize socket
+        let socket = getSocket();
+
+        // If socket doesn't exist, initialize it
+        if (!socket) {
+          console.log('📊 [LEADERBOARD] Initializing socket for leaderboard');
+          const identity = await getDeviceIdentity();
+          socket = initSocketClient({
+            userId: session?.user?.id,
+            deviceId: identity.deviceId,
+            displayName: session?.user?.name || identity.displayName,
+          });
+        }
+
+        // Ensure socket is connected before emitting
+        const ensureConnected = () => {
+          if (socket && socket.connected && playerId) {
+            console.log('📊 [LEADERBOARD] Entered leaderboard, notifying server');
+            socket.emit('lobby:viewing-leaderboard', { playerId });
+            setHasNotifiedServer(true);
+          }
+        };
+
+        // If already connected, emit immediately
+        if (socket.connected) {
+          ensureConnected();
+        } else {
+          // Wait for connection
+          socket.once('connect', ensureConnected);
+        }
+      } catch (error) {
+        console.error('📊 [LEADERBOARD] Failed to setup socket:', error);
+      }
+    }
+
+    setupSocketAndNotify();
+  }, [playerId, status, session, hasNotifiedServer]);
+
+  // Handle cleanup when leaving leaderboard
+  useEffect(() => {
+    // Only register cleanup if we've notified the server
+    if (!hasNotifiedServer || !playerId) {
+      return;
+    }
+
     return () => {
+      const socket = getSocket();
       if (socket?.connected && playerId) {
         const isStayingInMultiplayer = window.location.pathname.startsWith('/multiplayer');
         if (isStayingInMultiplayer) {
@@ -41,7 +91,7 @@ export default function LeaderboardPage() {
         }
       }
     };
-  }, [playerId]);
+  }, [hasNotifiedServer, playerId]); // Separate effect for cleanup
 
   // Redirect to signin if not authenticated
   if (status === 'unauthenticated') {

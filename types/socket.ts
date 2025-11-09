@@ -82,6 +82,8 @@ export interface ServerToClientEvents {
 
   'player:kicked': (data: { roomId: string; playerId: string }) => void;
 
+  'room:auto-rejoin': (data: { roomId: string; room: GameRoom }) => void;
+
   // Match events
   'match:found': (data: { roomId: string; room: GameRoom }) => void;
 

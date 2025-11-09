@@ -106,6 +106,14 @@ export default function MultiplayerPage() {
             resolve();
           };
 
+          // Handle auto-rejoin when reconnecting to a room
+          const onAutoRejoin = (data: { roomId: string; room: any }) => {
+            console.log('🔄 Auto-rejoining room:', data.roomId);
+            router.push(`/multiplayer/room/${data.roomId}`);
+          };
+
+          socket.on('room:auto-rejoin', onAutoRejoin);
+
           const onError = (error: Error) => {
             console.error('❌ Socket connect_error event received:', error);
             clearTimeout(timeout);

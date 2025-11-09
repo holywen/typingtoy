@@ -10,6 +10,7 @@ import {
   SocketData,
 } from '@/types/socket';
 import { redis } from '@/lib/redis/client';
+import { RoomManager } from './roomManager';
 
 export type TypedSocket = Socket<
   ClientToServerEvents,
@@ -165,13 +166,36 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     // Emit connection confirmation
     socket.emit('player:connected', { playerId });
 
-    // Use LobbyEventManager - it handles state changes and system messages
-    const { LobbyEventManager } = await import('./lobbyEventManager');
-    await LobbyEventManager.handlePlayerJoin(io!, {
-      playerId,
-      playerName: displayName,
-      socketId: socket.id,
-    });
+    // Check if player was in a room before disconnecting (auto-rejoin)
+    const existingRoom = await RoomManager.getRoomByPlayerId(playerId);
+
+    if (existingRoom) {
+      console.log(`🔄 Player ${displayName} reconnecting to room ${existingRoom.roomId}`);
+
+      // Join socket room
+      socket.join(existingRoom.roomId);
+      socket.data.currentRoomId = existingRoom.roomId;
+
+      // Update player connection status
+      await RoomManager.updatePlayerConnection(existingRoom.roomId, playerId, true);
+
+      // Notify client to navigate to room page
+      socket.emit('room:auto-rejoin', {
+        roomId: existingRoom.roomId,
+        room: existingRoom
+      });
+
+      // Notify room members that player reconnected
+      io!.to(existingRoom.roomId).emit('room:updated', { room: existingRoom });
+    } else {
+      // Player not in a room, join lobby
+      const { LobbyEventManager } = await import('./lobbyEventManager');
+      await LobbyEventManager.handlePlayerJoin(io!, {
+        playerId,
+        playerName: displayName,
+        socketId: socket.id,
+      });
+    }
 
     // Handle player identification
     socket.on('player:identify', (data) => {

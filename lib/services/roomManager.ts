@@ -106,10 +106,12 @@ export class RoomManager {
     // Check if player already in room (before checking if full)
     const existingPlayer = room.players.find(p => p.playerId === params.playerId);
     if (existingPlayer) {
-      console.log(`👤 Player ${params.playerName} already in room, reconnecting`);
-      existingPlayer.isConnected = true;
-      await this.updateRoom(room);
-      return { success: true, room, isReconnect: true };
+      // If player is already in room, this is the initial join after room creation
+      // (not a true reconnect, because disconnected players are removed from room.players)
+      console.log(`👤 Player ${params.playerName} already in room (initial join after creation)`);
+      // Don't change isConnected (already true), and return isReconnect: false
+      // so that the join message will be sent
+      return { success: true, room, isReconnect: false };
     }
 
     // Check if room is full (after checking existing player)

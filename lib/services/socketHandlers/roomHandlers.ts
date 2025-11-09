@@ -58,6 +58,13 @@ export function registerRoomHandlers(io: TypedServer, socket: TypedSocket): void
 
       console.log(`✅ Room created: ${room.roomId}, gameType="${room.gameType}"`);
 
+      // Host leaves lobby when creating room
+      const { LobbyEventManager } = await import('../lobbyEventManager');
+      await LobbyEventManager.handlePlayerLeave(io, {
+        playerId,
+        playerName: displayName,
+      });
+
       // Join socket room
       socket.join(room.roomId);
       socket.data.currentRoomId = room.roomId;
