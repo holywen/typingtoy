@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { onSocketEvent, offSocketEvent } from '@/lib/services/socketClient';
+import { onSocketEvent, offSocketEvent, emitSocketEvent, getSocket } from '@/lib/services/socketClient';
 
 interface OnlinePlayer {
   playerId: string;
@@ -13,14 +13,36 @@ export default function OnlinePlayerList() {
   const [players, setPlayers] = useState<OnlinePlayer[]>([]);
 
   useEffect(() => {
+    console.log('🎯 [OnlinePlayerList] Component mounted, setting up listener');
+
     // Listen for online players updates
     const handlePlayersUpdate = (data: { players: OnlinePlayer[] }) => {
+      console.log('📥 [OnlinePlayerList] Received player update:', data.players.length, 'players');
       setPlayers(data.players);
     };
 
     const cleanupUpdate = onSocketEvent('lobby:players', handlePlayersUpdate);
 
+    // Request initial player list - wait for socket connection
+    const requestPlayerList = () => {
+      const socket = getSocket();
+      if (socket?.connected) {
+        console.log('📤 [OnlinePlayerList] Requesting initial player list');
+        emitSocketEvent('lobby:request-players');
+      } else {
+        console.log('⏳ [OnlinePlayerList] Socket not connected, waiting...');
+        // Wait for connection and try again
+        socket?.once('connect', () => {
+          console.log('✅ [OnlinePlayerList] Socket connected, requesting player list');
+          emitSocketEvent('lobby:request-players');
+        });
+      }
+    };
+
+    requestPlayerList();
+
     return () => {
+      console.log('🧹 [OnlinePlayerList] Component unmounting, cleaning up');
       cleanupUpdate();
     };
   }, []);

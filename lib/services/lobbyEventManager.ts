@@ -134,6 +134,55 @@ export class LobbyEventManager {
   }
 
   /**
+   * Send current player list to a specific socket
+   * Used when a client requests the initial player list
+   */
+  static async sendPlayerListToSocket(socket: any): Promise<void> {
+    try {
+      const { RoomManager } = await import('./roomManager');
+      const onlinePlayerIds = await redis.smembers('online:players');
+
+      const players = (await Promise.all(
+        onlinePlayerIds.map(async (pid) => {
+          const socketId = await redis.get(`player:${pid}:socketId`);
+          const playerSocket = socket.server.sockets.sockets.get(socketId || '');
+
+          // Skip players whose sockets can't be found (stale Redis data)
+          if (!playerSocket) {
+            console.log(`⚠️ [LOBBY] Stale player in Redis, removing: ${pid}`);
+            await redis.srem('online:players', pid);
+            await redis.del(`player:${pid}:socketId`);
+            return null;
+          }
+
+          const displayName = playerSocket.data?.displayName || 'Guest';
+
+          // Check player status
+          const room = await RoomManager.getRoomByPlayerId(pid);
+          let status: 'online' | 'in-game' | 'in-room' = 'online';
+
+          if (room) {
+            status = room.status === 'playing' ? 'in-game' : 'in-room';
+          }
+
+          return {
+            playerId: pid,
+            displayName,
+            status
+          };
+        })
+      )).filter((player): player is NonNullable<typeof player> => player !== null);
+
+      // Send to requesting socket only
+      socket.emit('lobby:players', { players });
+
+      console.log(`📤 [LOBBY] Sent player list to ${socket.data?.displayName}: ${players.length} players`);
+    } catch (error) {
+      console.error('Error sending player list to socket:', error);
+    }
+  }
+
+  /**
    * Get current online players count
    */
   static async getOnlinePlayersCount(): Promise<number> {
