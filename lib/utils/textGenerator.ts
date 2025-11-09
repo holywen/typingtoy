@@ -125,22 +125,37 @@ export function generateTypingText(minWords: number = 500, maxWords: number = 10
     currentWordCount += paragraph.split(' ').length;
   }
 
-  // Join paragraphs and trim to target word count
-  const fullText = paragraphs.join('\n\n');
-  const words = fullText.split(' ');
+  // Join paragraphs with single newline
+  const fullText = paragraphs.join('\n');
 
-  if (words.length > targetWords) {
-    // Trim to exact target, ensuring we end at a sentence
-    const trimmedWords = words.slice(0, targetWords);
-    let text = trimmedWords.join(' ');
+  // Count words while preserving newlines
+  const wordCount = fullText.split(/\s+/).length;
 
-    // Find the last period
+  if (wordCount > targetWords) {
+    // Trim to exact target, ensuring we end at a sentence and preserve newlines
+    let currentCount = 0;
+    let text = '';
+
+    // Split by whitespace but preserve newlines
+    const tokens = fullText.split(/(\s+)/); // Keep separators
+
+    for (let i = 0; i < tokens.length && currentCount < targetWords; i++) {
+      const token = tokens[i];
+      text += token;
+
+      // Count words (non-whitespace tokens)
+      if (token.trim().length > 0) {
+        currentCount++;
+      }
+    }
+
+    // Find the last period to end at a sentence
     const lastPeriod = text.lastIndexOf('.');
-    if (lastPeriod > targetWords * 0.9 * 5) { // Rough estimate: word ~ 5 chars
+    if (lastPeriod > text.length * 0.9) {
       text = text.substring(0, lastPeriod + 1);
     }
 
-    return text;
+    return text.trim();
   }
 
   return fullText;

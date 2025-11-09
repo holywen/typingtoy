@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { TypingSession, Keystroke } from '@/types';
 import { calculateMetrics, getRealTimeStats, trackKeystroke } from '@/lib/services/typingMetrics';
 import { playKeystrokeSound, playCompletionSound } from '@/lib/services/soundEffects';
@@ -211,32 +211,34 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
     textDisplayRef.current?.focus();
   }, []);
 
-  // Auto-scroll to current character
+  // Auto-scroll to keep current typing position visible
   useEffect(() => {
     if (currentCharRef.current && textDisplayRef.current) {
       const container = textDisplayRef.current;
       const currentElement = currentCharRef.current;
 
-      // Get positions
       const containerRect = container.getBoundingClientRect();
       const elementRect = currentElement.getBoundingClientRect();
 
-      // Calculate if element is outside visible area
-      const isAbove = elementRect.top < containerRect.top;
-      const isBelow = elementRect.bottom > containerRect.bottom;
+      // Use larger padding to ensure input line stays visible
+      // This ensures scroll happens before the line goes out of view
+      const padding = 100;
+      const isAbove = elementRect.top < (containerRect.top + padding);
+      const isBelow = elementRect.bottom > (containerRect.bottom - padding);
 
       if (isAbove || isBelow) {
-        // Scroll to keep current character in view
+        // Use instant scroll (no smooth animation) to avoid input delay
+        // Use 'start' positioning to ensure the input line is at top of visible area
         currentElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
+          behavior: 'auto',
+          block: 'start',
         });
       }
     }
-  }, [currentInput]);
+  }, [currentInput.length]); // Only trigger on length change, not full string change
 
-  // Render text with alternating lines (target line, then user input line)
-  const renderText = () => {
+  // Windowed rendering: Only render visible lines to dramatically improve performance
+  const renderedText = useMemo(() => {
     // Split text into lines (treating each newline as a line separator)
     const lines: string[] = [];
     let currentLine = '';
@@ -265,11 +267,36 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
       charCount += lines[i].length + 1; // +1 for newline character
     }
 
-    // Render each line pair (target + user input)
-    const result: React.ReactElement[] = [];
-    charCount = 0;
+    // Define visible window (only render lines near current position)
+    const LINES_BEFORE = 5;
+    const LINES_AFTER = 10;
+    const visibleStart = Math.max(0, currentLineIndex - LINES_BEFORE);
+    const visibleEnd = Math.min(lines.length, currentLineIndex + LINES_AFTER + 1);
 
-    lines.forEach((line, lineIndex) => {
+    // Calculate approximate height per line pair (target + input line)
+    // text-xl = 1.25rem ≈ 20px, leading-relaxed = 1.625 ≈ 32.5px, mb-4 = 1rem ≈ 16px
+    const LINE_PAIR_HEIGHT = 81; // pixels per line pair
+
+    const result: React.ReactElement[] = [];
+
+    // Add spacer before visible window
+    if (visibleStart > 0) {
+      result.push(
+        <div
+          key="spacer-before"
+          style={{ height: `${visibleStart * LINE_PAIR_HEIGHT}px` }}
+        />
+      );
+    }
+
+    // Render only visible lines
+    charCount = 0;
+    for (let i = 0; i < visibleStart; i++) {
+      charCount += lines[i].length + 1;
+    }
+
+    for (let lineIndex = visibleStart; lineIndex < visibleEnd; lineIndex++) {
+      const line = lines[lineIndex];
       const lineStartIndex = charCount;
       const lineEndIndex = charCount + line.length;
 
@@ -280,13 +307,10 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         const isCurrent = globalIndex === currentInput.length;
 
         if (globalIndex < currentInput.length) {
-          // Already typed - show in gray (not colored, we'll color the input line)
           className += 'text-gray-400 dark:text-gray-500';
         } else if (isCurrent) {
-          // Current character
           className += 'text-gray-900 dark:text-white bg-blue-200 dark:bg-blue-900/50';
         } else {
-          // Not yet typed
           className += 'text-gray-400 dark:text-gray-600';
         }
 
@@ -303,17 +327,36 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         );
       });
 
-      // Render user input line
-      const userInputForLine = currentInput.slice(
-        lineStartIndex,
-        Math.min(lineEndIndex, currentInput.length)
-      );
+      // Add newline indicator at end of target line (if not the last line)
+      if (lineIndex < lines.length - 1) {
+        const newlineIndex = lineEndIndex;
+        const isCurrent = newlineIndex === currentInput.length;
+        let className = 'text-xl ';
 
+        if (newlineIndex < currentInput.length) {
+          className += 'text-gray-400 dark:text-gray-500';
+        } else if (isCurrent) {
+          className += 'text-gray-900 dark:text-white bg-blue-200 dark:bg-blue-900/50';
+        } else {
+          className += 'text-gray-400 dark:text-gray-600';
+        }
+
+        targetLineChars.push(
+          <span
+            key={`target-${lineIndex}-newline`}
+            className={className}
+            ref={isCurrent ? currentCharRef : null}
+          >
+            ↵
+          </span>
+        );
+      }
+
+      // Render user input line
       const inputLineChars = line.split('').map((targetChar, charIndexInLine) => {
         const globalIndex = lineStartIndex + charIndexInLine;
 
         if (globalIndex >= currentInput.length) {
-          // Not typed yet - show placeholder
           return (
             <span
               key={`input-${lineIndex}-${charIndexInLine}`}
@@ -346,26 +389,69 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         );
       });
 
-      // Add target line
+      // Add newline indicator for input line (if not the last line and user has typed it)
+      if (lineIndex < lines.length - 1) {
+        const newlineIndex = lineEndIndex;
+
+        if (newlineIndex < currentInput.length) {
+          const typedChar = currentInput[newlineIndex];
+          const isCorrect = typedChar === '\n';
+          let className = 'text-xl ';
+
+          if (isCorrect) {
+            className += 'text-green-600 dark:text-green-400 font-semibold';
+          } else {
+            className += 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30 font-semibold';
+          }
+
+          inputLineChars.push(
+            <span
+              key={`input-${lineIndex}-newline`}
+              className={className}
+            >
+              ↵
+            </span>
+          );
+        } else {
+          // Not typed yet - show placeholder
+          inputLineChars.push(
+            <span
+              key={`input-${lineIndex}-newline`}
+              className="text-xl text-transparent"
+            >
+              ↵
+            </span>
+          );
+        }
+      }
+
       result.push(
         <div key={`target-line-${lineIndex}`} className="font-mono leading-relaxed">
           {targetLineChars}
         </div>
       );
 
-      // Add user input line (always show, even if empty)
       result.push(
         <div key={`input-line-${lineIndex}`} className="font-mono leading-relaxed mb-4">
           {inputLineChars}
         </div>
       );
 
-      // Update character count (add line length + 1 for newline)
       charCount += line.length + 1;
-    });
+    }
+
+    // Add spacer after visible window
+    if (visibleEnd < lines.length) {
+      result.push(
+        <div
+          key="spacer-after"
+          style={{ height: `${(lines.length - visibleEnd) * LINE_PAIR_HEIGHT}px` }}
+        />
+      );
+    }
 
     return result;
-  };
+  }, [targetText, currentInput.length]); // Only recalculate when text or position changes
 
   const restart = () => {
     setSession({
@@ -441,7 +527,7 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
           tabIndex={0}
           onKeyDown={handleKeyDown}
         >
-          {renderText()}
+          {renderedText}
         </div>
         {!isStarted && !isCompleted && (
           <div className="mt-4 text-center text-gray-500 dark:text-gray-400 text-sm">
