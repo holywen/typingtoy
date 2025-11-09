@@ -305,11 +305,13 @@ export default function FallingBlocksGame() {
         {blocks.map(block => (
           <div
             key={block.id}
-            className="absolute text-4xl font-bold text-white bg-blue-600 rounded-lg px-6 py-3 shadow-lg"
+            className="absolute text-4xl font-bold text-white bg-blue-600 rounded-lg px-6 py-3 shadow-lg will-change-transform"
             style={{
-              left: `${block.x}%`,
-              top: `${block.y}%`,
-              transform: 'translate(-50%, -50%)',
+              left: '0',
+              top: '0',
+              transform: `translate3d(calc(${block.x}vw - 50%), calc(${block.y}vh - 50%), 0)`,
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
             }}
           >
             {block.char}
