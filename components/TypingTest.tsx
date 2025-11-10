@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { TypingSession, Keystroke } from '@/types';
 import { calculateMetrics, getRealTimeStats, trackKeystroke } from '@/lib/services/typingMetrics';
-import { playKeystrokeSound, playCompletionSound } from '@/lib/services/soundEffects';
+import { playKeystrokeSound, playCompletionSound, playVictorySound, playDefeatSound, playGameStartSound } from '@/lib/services/soundEffects';
 import { getUserSettings, updateSetting } from '@/lib/services/userSettings';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import VirtualKeyboard from './VirtualKeyboard';
@@ -41,6 +41,28 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
     const settings = getUserSettings();
     setSoundEnabled(settings.soundEnabled);
   }, []);
+
+  // Helper function to determine completion sound based on performance
+  const playPerformanceSound = useCallback((accuracy: number, wpm: number) => {
+    if (!soundEnabled) return;
+
+    // Excellent performance: accuracy >= 95% and WPM >= 40
+    if (accuracy >= 95 && wpm >= 40) {
+      playVictorySound();
+    }
+    // Good performance: accuracy >= 85% and WPM >= 30
+    else if (accuracy >= 85 && wpm >= 30) {
+      playCompletionSound();
+    }
+    // Poor performance: accuracy < 70% or WPM < 20
+    else if (accuracy < 70 || wpm < 20) {
+      playDefeatSound();
+    }
+    // Average performance
+    else {
+      playCompletionSound();
+    }
+  }, [soundEnabled]);
 
   // Initialize session
   useEffect(() => {
@@ -85,6 +107,10 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
           ...prev,
           startTime: performance.now(),
         }));
+        // Play start sound
+        if (soundEnabled) {
+          playGameStartSound();
+        }
         // Notify parent component that typing has started
         if (onStart) {
           onStart();
@@ -131,15 +157,16 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
           // Check if completed
           if (newInput.length === targetText.length) {
             setIsCompleted(true);
-            if (soundEnabled) {
-              playCompletionSound();
-            }
             const finalSession = {
               ...session,
               keystrokes: [...session.keystrokes, keystroke],
               currentPosition: newInput.length,
             };
             const metrics = calculateMetrics(finalSession);
+
+            // Play performance-based completion sound
+            playPerformanceSound(metrics.accuracy, metrics.netWPM);
+
             setStats({
               wpm: Math.round(metrics.netWPM),
               accuracy: Math.round(metrics.accuracy),
@@ -182,15 +209,16 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         // Check if completed
         if (newInput.length === targetText.length) {
           setIsCompleted(true);
-          if (soundEnabled) {
-            playCompletionSound();
-          }
           const finalSession = {
             ...session,
             keystrokes: [...session.keystrokes, keystroke],
             currentPosition: newInput.length,
           };
           const metrics = calculateMetrics(finalSession);
+
+          // Play performance-based completion sound
+          playPerformanceSound(metrics.accuracy, metrics.netWPM);
+
           setStats({
             wpm: Math.round(metrics.netWPM),
             accuracy: Math.round(metrics.accuracy),
@@ -202,7 +230,7 @@ export default function TypingTest({ targetText, onComplete, onStart, showKeyboa
         }
       }
     },
-    [isStarted, isCompleted, onStart, currentInput, targetText, session, onComplete, soundEnabled]
+    [isStarted, isCompleted, onStart, currentInput, targetText, session, onComplete, soundEnabled, playPerformanceSound]
   );
 
 

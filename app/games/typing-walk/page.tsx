@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { lessonsData } from '@/lib/data/lessons';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { playKeystrokeSound, playGameStartSound, playDefeatSound, playVictorySound } from '@/lib/services/soundEffects';
 
 const GRID_ROWS = 10;
 const GRID_COLS = 22;
@@ -28,7 +30,14 @@ export default function TypingWalkGame() {
   const [playerRow, setPlayerRow] = useState(0);
   const [playerCol, setPlayerCol] = useState(1);
   const [currentPath, setCurrentPath] = useState<Array<{row: number, col: number}>>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  // Load sound settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setSoundEnabled(settings.soundEnabled);
+  }, []);
 
   // Get characters from selected lesson
   useEffect(() => {
@@ -123,7 +132,12 @@ export default function TypingWalkGame() {
     setGrid([]);
     setPlayerRow(0);
     setPlayerCol(1);
-  }, []);
+
+    // Play game start sound
+    if (soundEnabled) {
+      playGameStartSound();
+    }
+  }, [soundEnabled]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over/win screen
@@ -152,6 +166,10 @@ export default function TypingWalkGame() {
     if (nextPathIndex >= currentPath.length) {
       // Won the game!
       setGameOver(true);
+      // Play victory sound
+      if (soundEnabled) {
+        playVictorySound();
+      }
       return;
     }
 
@@ -159,6 +177,11 @@ export default function TypingWalkGame() {
     const nextCell = grid[nextPos.row][nextPos.col];
 
     if (key === nextCell.char) {
+      // Play correct keystroke sound
+      if (soundEnabled) {
+        playKeystrokeSound(true);
+      }
+
       // Correct key!
       setScore(s => s + 10);
       setPlayerRow(nextPos.row);
@@ -171,16 +194,25 @@ export default function TypingWalkGame() {
         return newGrid;
       });
     } else {
+      // Play incorrect keystroke sound
+      if (soundEnabled) {
+        playKeystrokeSound(false);
+      }
+
       // Wrong key!
       setLives(l => {
         const newLives = l - 1;
         if (newLives <= 0) {
           setGameOver(true);
+          // Play game over sound
+          if (soundEnabled) {
+            playDefeatSound();
+          }
         }
         return newLives;
       });
     }
-  }, [gameStarted, gameOver, grid, playerRow, playerCol, currentPath, startGame]);
+  }, [gameStarted, gameOver, grid, playerRow, playerCol, currentPath, startGame, soundEnabled]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);

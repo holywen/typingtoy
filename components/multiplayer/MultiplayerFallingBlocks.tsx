@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
 import { getUserSettings } from '@/lib/services/userSettings';
 import { convertTextToLayout } from '@/lib/utils/layoutMapping';
+import { playKeystrokeSound, playVictorySound, playDefeatSound } from '@/lib/services/soundEffects';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 
@@ -39,12 +40,21 @@ export default function MultiplayerFallingBlocks({
   const [winner, setWinner] = useState<string | null>(null);
   const inputBufferRef = useRef<string>('');
   const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundEnabledRef = useRef(true);
 
-  // Load keyboard layout from user settings
+  // Load keyboard layout and sound settings from user settings
   useEffect(() => {
     const settings = getUserSettings();
     setKeyboardLayout(settings.keyboardLayout);
+    setSoundEnabled(settings.soundEnabled);
+    soundEnabledRef.current = settings.soundEnabled;
   }, []);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   // Convert blocks for display in user's layout
   const displayBlocks = useMemo(() => {
@@ -91,6 +101,15 @@ export default function MultiplayerFallingBlocks({
     const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
+
+      // Play victory or defeat sound - use ref to get latest value
+      if (soundEnabledRef.current) {
+        if (data.winner === playerId) {
+          playVictorySound();
+        } else {
+          playDefeatSound();
+        }
+      }
     };
 
     // TODO: Add 'game:error' to ServerToClientEvents in types/socket.ts
@@ -108,7 +127,7 @@ export default function MultiplayerFallingBlocks({
       cleanupEnded();
       // cleanupError();
     };
-  }, []);
+  }, [playerId]);
 
   // Handle keyboard input
   const handleKeyPress = useCallback(
@@ -129,6 +148,11 @@ export default function MultiplayerFallingBlocks({
       );
 
       if (matchingBlock) {
+        // Play correct keystroke sound - use ref to get latest value
+        if (soundEnabledRef.current) {
+          playKeystrokeSound(true);
+        }
+
         // Correct key - send to server
         emitSocketEvent('game:input', {
           roomId,
@@ -147,6 +171,11 @@ export default function MultiplayerFallingBlocks({
         // Optimistically remove block locally for instant feedback
         setLocalBlocks((prev) => prev.filter((b) => b.id !== matchingBlock.id));
       } else {
+        // Play incorrect keystroke sound - use ref to get latest value
+        if (soundEnabledRef.current) {
+          playKeystrokeSound(false);
+        }
+
         // Wrong key - also send to server for error counting
         emitSocketEvent('game:input', {
           roomId,

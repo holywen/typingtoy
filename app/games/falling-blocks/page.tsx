@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { lessonsData } from '@/lib/data/lessons';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { playKeystrokeSound, playGameStartSound, playDefeatSound, playErrorSound } from '@/lib/services/soundEffects';
 
 interface FallingBlock {
   id: number;
@@ -24,10 +26,17 @@ export default function FallingBlocksGame() {
   const [chars, setChars] = useState<string[]>([]);
   const [errorCount, setErrorCount] = useState(0);
   const [maxErrors] = useState(10);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const blockIdRef = useRef(0);
   const gameLoopRef = useRef<number | undefined>(undefined);
   const blocksAtBottomRef = useRef(0);
   const foundMatchRef = useRef(false);
+
+  // Load sound settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setSoundEnabled(settings.soundEnabled);
+  }, []);
 
   // Get characters from selected lesson
   useEffect(() => {
@@ -106,15 +115,24 @@ export default function FallingBlocksGame() {
       // Reset ref IMMEDIATELY before setErrorCount (to prepare for next cycle)
       blocksAtBottomRef.current = 0;
 
+      // Play error sound for missed blocks
+      if (soundEnabled) {
+        playErrorSound();
+      }
+
       setErrorCount(prevErrors => {
         const newErrorCount = prevErrors + missedCount;
         if (newErrorCount >= maxErrors) {
           setGameOver(true);
+          // Play game over sound
+          if (soundEnabled) {
+            playDefeatSound();
+          }
         }
         return newErrorCount;
       });
     }
-  }, [maxErrors]);
+  }, [maxErrors, soundEnabled]);
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
@@ -143,7 +161,12 @@ export default function FallingBlocksGame() {
     setLevel(1);
     setBlocks([]);
     setErrorCount(0);
-  }, []);
+
+    // Play game start sound
+    if (soundEnabled) {
+      playGameStartSound();
+    }
+  }, [soundEnabled]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over screen
@@ -170,6 +193,11 @@ export default function FallingBlocksGame() {
         // Set ref to true to indicate match found
         foundMatchRef.current = true;
 
+        // Play correct keystroke sound
+        if (soundEnabled) {
+          playKeystrokeSound(true);
+        }
+
         // Match found - update score
         setScore(s => {
           const newScore = s + 10;
@@ -189,17 +217,26 @@ export default function FallingBlocksGame() {
     // (including both Strict Mode calls)
     setTimeout(() => {
       if (!foundMatchRef.current) {
+        // Play incorrect keystroke sound
+        if (soundEnabled) {
+          playKeystrokeSound(false);
+        }
+
         // No match was found - increment error count
         setErrorCount(prevErrors => {
           const newErrorCount = prevErrors + 1;
           if (newErrorCount >= maxErrors) {
             setGameOver(true);
+            // Play game over sound
+            if (soundEnabled) {
+              playDefeatSound();
+            }
           }
           return newErrorCount;
         });
       }
     }, 0);
-  }, [gameStarted, gameOver, startGame, maxErrors]);
+  }, [gameStarted, gameOver, startGame, maxErrors, soundEnabled]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);

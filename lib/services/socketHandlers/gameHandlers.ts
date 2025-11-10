@@ -278,11 +278,12 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
   });
 
   // Game input (keystroke)
-  socket.on('game:input', async ({ roomId, input }: { roomId: string; input: PlayerInput }) => {
+  socket.on('game:input', async ({ roomId, input }: { roomId: string; input: PlayerInput }, callback?: (result: any) => void) => {
     try {
       const game = activeGames.get(roomId);
       if (!game) {
         socket.emit('game:error', { code: 'GAME_NOT_FOUND', message: 'Game not found' });
+        if (callback) callback({ success: false, error: 'Game not found' });
         return;
       }
 
@@ -307,6 +308,7 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
           input,
         });
         console.log(`⚠️ Anti-cheat rejected input from ${displayName}: ${validation.reason}`);
+        if (callback) callback({ success: false, error: validation.reason || 'Anti-cheat validation failed' });
         return;
       }
 
@@ -315,6 +317,11 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
 
       // Process player input
       const result = game.handlePlayerInput(playerId, input);
+
+      // Call the callback with the result (important for sound effects!)
+      if (callback) {
+        callback(result);
+      }
 
       // Broadcast updated player state to all players in room
       if (result.success) {
@@ -335,6 +342,7 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
     } catch (error) {
       console.error('Error handling game input:', error);
       socket.emit('game:error', { code: 'INPUT_ERROR', message: 'Failed to process input' });
+      if (callback) callback({ success: false, error: 'Failed to process input' });
     }
   });
 

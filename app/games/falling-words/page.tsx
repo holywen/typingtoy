@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { lessonsData } from '@/lib/data/lessons';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { playKeystrokeSound, playGameStartSound, playDefeatSound, playCompletionSound } from '@/lib/services/soundEffects';
 
 interface FallingWord {
   id: number;
@@ -26,9 +28,16 @@ export default function FallingWordsGame() {
   const [wordList, setWordList] = useState<string[]>([]);
   const [errorCount, setErrorCount] = useState(0);
   const [maxErrors] = useState(10);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const wordIdRef = useRef(0);
   const gameLoopRef = useRef<number | undefined>(undefined);
   const foundMatchRef = useRef(false);
+
+  // Load sound settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setSoundEnabled(settings.soundEnabled);
+  }, []);
 
   // Get characters from selected lesson and generate word list
   useEffect(() => {
@@ -98,12 +107,16 @@ export default function FallingWordsGame() {
       const reachedBottom = updated.some(word => word.y >= 85);
       if (reachedBottom) {
         setGameOver(true);
+        // Play game over sound
+        if (soundEnabled) {
+          playDefeatSound();
+        }
         return prev;
       }
 
       return updated.filter(word => word.y < 85);
     });
-  }, []);
+  }, [soundEnabled]);
 
   useEffect(() => {
     if (gameStarted && !gameOver) {
@@ -129,7 +142,12 @@ export default function FallingWordsGame() {
     setLevel(1);
     setWords([]);
     setErrorCount(0);
-  }, []);
+
+    // Play game start sound
+    if (soundEnabled) {
+      playGameStartSound();
+    }
+  }, [soundEnabled]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over screen
@@ -168,6 +186,11 @@ export default function FallingWordsGame() {
         // Check if word is complete
         if (matchedWord.typed === matchedWord.word) {
           // Word completed!
+          // Play completion sound
+          if (soundEnabled) {
+            playCompletionSound();
+          }
+
           setScore(s => {
             const newScore = s + matchedWord.word.length * 5;
             // Level up every 100 points
@@ -179,6 +202,10 @@ export default function FallingWordsGame() {
           // Remove the completed word
           updatedWords.splice(matchIndex, 1);
         } else {
+          // Correct character in word
+          if (soundEnabled) {
+            playKeystrokeSound(true);
+          }
           updatedWords[matchIndex] = matchedWord;
         }
 
@@ -192,17 +219,26 @@ export default function FallingWordsGame() {
     // (including both Strict Mode calls)
     setTimeout(() => {
       if (!foundMatchRef.current) {
+        // Play incorrect keystroke sound
+        if (soundEnabled) {
+          playKeystrokeSound(false);
+        }
+
         // No match was found - increment error count
         setErrorCount(prevErrors => {
           const newErrorCount = prevErrors + 1;
           if (newErrorCount >= maxErrors) {
             setGameOver(true);
+            // Play game over sound
+            if (soundEnabled) {
+              playDefeatSound();
+            }
           }
           return newErrorCount;
         });
       }
     }, 0);
-  }, [gameStarted, gameOver, startGame, maxErrors]);
+  }, [gameStarted, gameOver, startGame, maxErrors, soundEnabled]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);

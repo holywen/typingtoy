@@ -12,6 +12,8 @@ import MultiplayerBlink from '@/components/multiplayer/MultiplayerBlink';
 import MultiplayerSpeedRace from '@/components/multiplayer/MultiplayerSpeedRace';
 import MultiplayerFallingWords from '@/components/multiplayer/MultiplayerFallingWords';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { playCountdownSound, playGameStartSound } from '@/lib/services/soundEffects';
+import { getUserSettings } from '@/lib/services/userSettings';
 
 export default function RoomPage({ params }: { params: Promise<{ roomId: string }> }) {
   const { roomId } = use(params);
@@ -31,6 +33,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState<string | null>(null);
   const hasJoinedRef = useRef(false); // Track if already joined room
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Load sound settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setSoundEnabled(settings.soundEnabled);
+  }, []);
 
   // Check authentication before initializing
   useEffect(() => {
@@ -222,6 +231,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       if (data.roomId === roomId) {
         console.log('✅ [CLIENT] Setting countdown to:', data.countdown);
         setCountdown(data.countdown);
+        // Play countdown sound
+        if (soundEnabled) {
+          playCountdownSound(data.countdown);
+        }
       } else {
         console.log('⚠️ [CLIENT] Countdown for different room, ignoring');
       }
@@ -233,6 +246,10 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
         console.log('✅ [CLIENT] Activating game! Setting gameActive=true');
         setCountdown(null);
         setGameActive(true);
+        // Play game start sound
+        if (soundEnabled) {
+          playGameStartSound();
+        }
         console.log('Game started:', data);
       } else {
         console.log('⚠️ [CLIENT] game:started for different room, ignoring');

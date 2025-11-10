@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
 import { getUserSettings } from '@/lib/services/userSettings';
 import { convertTextToLayout } from '@/lib/utils/layoutMapping';
+import { playKeystrokeSound, playVictorySound, playDefeatSound } from '@/lib/services/soundEffects';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { BlinkGameState, BlinkPlayerData } from '@/lib/game-engine/BlinkMultiplayer';
@@ -36,12 +37,21 @@ export default function MultiplayerBlink({
   const [feedback, setFeedback] = useState<{ message: string; type: 'correct' | 'error' | 'neutral' } | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<number>(2000);
   const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundEnabledRef = useRef(true);
 
-  // Load keyboard layout from user settings
+  // Load keyboard layout and sound settings from user settings
   useEffect(() => {
     const settings = getUserSettings();
     setKeyboardLayout(settings.keyboardLayout);
+    setSoundEnabled(settings.soundEnabled);
+    soundEnabledRef.current = settings.soundEnabled;
   }, []);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   // Convert current character to user's keyboard layout for display
   const displayChar = useMemo(() => {
@@ -122,6 +132,15 @@ export default function MultiplayerBlink({
       setGameEnded(true);
       setWinner(data.winner);
       console.log('🎮 Blink game ended, winner:', data.winner, 'finalState:', data.finalState);
+
+      // Play victory or defeat sound - use ref to get latest value
+      if (soundEnabledRef.current) {
+        if (data.winner === playerId) {
+          playVictorySound();
+        } else {
+          playDefeatSound();
+        }
+      }
     };
 
     const handleGameError = (data: { code: string; message: string }) => {
@@ -146,7 +165,7 @@ export default function MultiplayerBlink({
       // cleanupError();
       // cleanupRejected();
     };
-  }, []);
+  }, [playerId]);
 
   // Timer countdown effect
   useEffect(() => {
@@ -190,8 +209,16 @@ export default function MultiplayerBlink({
 
       // Show immediate feedback using the display character (in user's layout)
       if (key === displayChar.toLowerCase()) {
+        // Play correct keystroke sound - use ref to get latest value
+        if (soundEnabledRef.current) {
+          playKeystrokeSound(true);
+        }
         setFeedback({ message: 'Correct!', type: 'correct' });
       } else {
+        // Play incorrect keystroke sound - use ref to get latest value
+        if (soundEnabledRef.current) {
+          playKeystrokeSound(false);
+        }
         setFeedback({ message: `Wrong! Expected '${displayChar}'`, type: 'error' });
       }
 
@@ -265,6 +292,10 @@ export default function MultiplayerBlink({
                 <div className="text-2xl font-bold text-gray-900 dark:text-white">
                   {currentPlayerData?.bestStreak || 0}
                 </div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Errors</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{currentPlayerState?.errorCount || 0}/10</div>
               </div>
               <div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">First Answers</div>
@@ -393,6 +424,7 @@ export default function MultiplayerBlink({
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">
                           {player.accuracy.toFixed(1)}% Accuracy |
+                          Errors: {player.errorCount || 0}/10 |
                           Streak: {playerData?.bestStreak || 0} |
                           First: {playerData?.firstAnswers || 0}x
                         </div>
@@ -469,7 +501,7 @@ export default function MultiplayerBlink({
                 </div>
 
                 {/* Stats */}
-                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-white/80">
+                <div className="mt-2 grid grid-cols-5 gap-2 text-xs text-white/80">
                   <div>
                     <div className="text-white/60">Score</div>
                     <div className="font-bold text-white">{player.score}</div>
@@ -483,6 +515,10 @@ export default function MultiplayerBlink({
                   <div>
                     <div className="text-white/60">Acc</div>
                     <div className="font-bold text-white">{player.accuracy.toFixed(0)}%</div>
+                  </div>
+                  <div>
+                    <div className="text-white/60">Errors</div>
+                    <div className="font-bold text-white">{player.errorCount || 0}/10</div>
                   </div>
                   <div>
                     <div className="text-white/60">First</div>

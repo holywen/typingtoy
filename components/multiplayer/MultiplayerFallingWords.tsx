@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { playKeystrokeSound, playCompletionSound, playVictorySound, playDefeatSound } from '@/lib/services/soundEffects';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { FallingWordsGameState, FallingWordsPlayerData, FallingWord } from '@/lib/game-engine/FallingWordsMultiplayer';
@@ -27,6 +29,20 @@ export default function MultiplayerFallingWords({
   const [gameEnded, setGameEnded] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: 'correct' | 'error' | 'neutral' } | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundEnabledRef = useRef(true);
+
+  // Load sound settings from user settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setSoundEnabled(settings.soundEnabled);
+    soundEnabledRef.current = settings.soundEnabled;
+  }, []);
+
+  // Sync ref with state
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   // Listen for game state updates
   useEffect(() => {
@@ -48,6 +64,15 @@ export default function MultiplayerFallingWords({
     const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
+
+      // Play victory or defeat sound
+      if (soundEnabledRef.current) {
+        if (data.winner === playerId) {
+          playVictorySound();
+        } else {
+          playDefeatSound();
+        }
+      }
     };
 
     const cleanupState = onSocketEvent('game:state', handleGameState);
@@ -81,14 +106,35 @@ export default function MultiplayerFallingWords({
         },
       }, (response: any) => {
         if (response.success) {
+          // Check if a word was completed (check for completion indicators in feedback)
+          const feedbackMsg = response.feedback?.message || '';
+          const isWordCompleted = feedbackMsg.toLowerCase().includes('word completed') ||
+                                  feedbackMsg.toLowerCase().includes('great') ||
+                                  feedbackMsg.toLowerCase().includes('excellent') ||
+                                  response.wordCompleted === true;
+
+          // Play appropriate sound based on whether word was completed
+          if (soundEnabledRef.current) {
+            if (isWordCompleted) {
+              playCompletionSound();
+            } else {
+              playKeystrokeSound(true);
+            }
+          }
+
           // Show feedback for correct keystroke
           setFeedback({
-            message: response.feedback?.message || 'Correct!',
+            message: feedbackMsg || 'Correct!',
             type: 'correct',
           });
 
-          setTimeout(() => setFeedback(null), 500);
+          setTimeout(() => setFeedback(null), isWordCompleted ? 1000 : 500);
         } else {
+          // Play incorrect keystroke sound
+          if (soundEnabledRef.current) {
+            playKeystrokeSound(false);
+          }
+
           // Show feedback for error
           setFeedback({
             message: response.feedback?.message || response.error || 'Wrong!',

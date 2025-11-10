@@ -230,10 +230,10 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
       if (newLostWords.length > 0) {
         // Create new playerData object with incremented counts (avoid mutation)
+        // NOTE: Only increment wordsLost, not errorCount (they are separate counters)
         const updatedPlayerData: FallingWordsPlayerData = {
           ...playerData,
           wordsLost: playerData.wordsLost + newLostWords.length,
-          errorCount: playerData.errorCount + newLostWords.length,
           lostWordIds: new Set(playerData.lostWordIds), // Copy the Set
         };
 
@@ -401,6 +401,10 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
             return {
               success: true,
+              wordCompleted: true,
+              feedback: {
+                message: `Word completed! +${targetWord.word.length * 10}`,
+              },
             };
           }
 
@@ -477,6 +481,10 @@ export class FallingWordsMultiplayer extends BaseMultiplayerGame {
 
         return {
           success: true,
+          wordCompleted: true,
+          feedback: {
+            message: `Word completed! +${targetWord.word.length * 10}`,
+          },
         };
       }
 

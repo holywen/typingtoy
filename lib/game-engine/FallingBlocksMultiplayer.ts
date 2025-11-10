@@ -243,7 +243,7 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
               gameSpecificData: updatedPlayerData,
             });
           } else {
-            // Lose points for missed blocks and update error count
+            // Lose points for missed block
             this.updatePlayerState(block.playerId, {
               score: Math.max(0, playerState.score - 10),
               gameSpecificData: updatedPlayerData,

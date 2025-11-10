@@ -160,6 +160,18 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
     playerData.timeouts++;
     playerData.streak = 0; // Break streak
 
+    // Increment error count for timeout
+    playerState.errorCount++;
+
+    // Check if player exceeded max errors (10 errors = game over for this player)
+    if (playerState.errorCount >= 10) {
+      this.updatePlayerState(playerId, {
+        isFinished: true,
+      });
+      console.log(`❌ Player ${playerState.displayName} reached 10 errors - Game Over!`);
+      return; // Don't move to next character, player is finished
+    }
+
     // Move player to next character
     this.movePlayerToNextChar(playerId);
   }
@@ -273,6 +285,17 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
       playerState.errorCount++;
       playerState.accuracy = (playerState.correctKeystrokes / playerState.keystrokeCount) * 100;
       playerData.streak = 0; // Break streak
+
+      // Check if player exceeded max errors (10 errors = game over for this player)
+      if (playerState.errorCount >= 10) {
+        this.updatePlayerState(playerId, {
+          isFinished: true,
+        });
+        return {
+          success: false,
+          error: 'Game over! Too many errors.',
+        };
+      }
 
       // Penalty: Reduce current remaining time immediately by adjusting charStartTime
       // Moving charStartTime back makes the elapsed time appear longer

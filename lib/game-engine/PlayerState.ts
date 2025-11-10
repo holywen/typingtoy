@@ -68,6 +68,10 @@ export interface InputResult {
   newState?: Partial<PlayerState>;
   events?: GameEvent[];
   error?: string;
+  wordCompleted?: boolean;
+  feedback?: {
+    message: string;
+  };
 }
 
 /**

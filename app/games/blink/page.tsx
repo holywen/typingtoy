@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { lessonsData } from '@/lib/data/lessons';
+import { getUserSettings } from '@/lib/services/userSettings';
+import { playKeystrokeSound, playGameStartSound, playDefeatSound } from '@/lib/services/soundEffects';
 
 export default function BlinkGame() {
   const { t } = useLanguage();
@@ -18,6 +20,13 @@ export default function BlinkGame() {
   const [displayChar, setDisplayChar] = useState(true);
   const [timeLeft, setTimeLeft] = useState(2000); // 2 seconds to type
   const [level, setLevel] = useState(1);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // Load sound settings
+  useEffect(() => {
+    const settings = getUserSettings();
+    setSoundEnabled(settings.soundEnabled);
+  }, []);
 
   // Get characters from selected lesson
   useEffect(() => {
@@ -51,6 +60,10 @@ export default function BlinkGame() {
         setTimeLeft(prev => {
           if (prev <= 10) {
             setGameOver(true);
+            // Play game over sound
+            if (soundEnabled) {
+              playDefeatSound();
+            }
             return 0;
           }
           return prev - 10;
@@ -59,7 +72,7 @@ export default function BlinkGame() {
 
       return () => clearInterval(timer);
     }
-  }, [gameStarted, gameOver, currentChar]);
+  }, [gameStarted, gameOver, currentChar, soundEnabled]);
 
   const startGame = useCallback(() => {
     setGameStarted(true);
@@ -68,7 +81,12 @@ export default function BlinkGame() {
     setStreak(0);
     setLevel(1);
     setCurrentChar('');
-  }, []);
+
+    // Play game start sound
+    if (soundEnabled) {
+      playGameStartSound();
+    }
+  }, [soundEnabled]);
 
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     // Handle Enter key on game over screen
@@ -83,6 +101,11 @@ export default function BlinkGame() {
     const key = e.key.toLowerCase();
 
     if (key === currentChar) {
+      // Play correct keystroke sound
+      if (soundEnabled) {
+        playKeystrokeSound(true);
+      }
+
       // Correct key
       const newScore = score + 10 + streak;
       const newStreak = streak + 1;
@@ -99,6 +122,11 @@ export default function BlinkGame() {
 
       nextRound();
     } else if (key.length === 1 && key.match(/[a-z]/)) {
+      // Play incorrect keystroke sound
+      if (soundEnabled) {
+        playKeystrokeSound(false);
+      }
+
       // Wrong key (only count letter keys)
       setStreak(0);
       setScore(s => Math.max(0, s - 5)); // Lose 5 points for wrong key
@@ -106,7 +134,7 @@ export default function BlinkGame() {
       // Penalty: Reduce current remaining time immediately
       setTimeLeft(prev => Math.max(0, prev - 300)); // Lose 300ms immediately
     }
-  }, [gameStarted, gameOver, currentChar, score, streak, bestStreak, nextRound, startGame]);
+  }, [gameStarted, gameOver, currentChar, score, streak, bestStreak, nextRound, startGame, soundEnabled]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);

@@ -23,8 +23,14 @@ jest.mock('@/lib/services/typingMetrics', () => ({
 }));
 
 jest.mock('@/lib/services/soundEffects', () => ({
+  initializeAudio: jest.fn(),
   playKeystrokeSound: jest.fn(),
   playCompletionSound: jest.fn(),
+  playErrorSound: jest.fn(),
+  playCountdownSound: jest.fn(),
+  playGameStartSound: jest.fn(),
+  playVictorySound: jest.fn(),
+  playDefeatSound: jest.fn(),
 }));
 
 jest.mock('@/lib/services/userSettings', () => ({

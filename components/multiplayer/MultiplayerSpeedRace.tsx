@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getSocket, emitSocketEvent, onSocketEvent } from '@/lib/services/socketClient';
 import { getUserSettings } from '@/lib/services/userSettings';
 import { convertTextToLayout } from '@/lib/utils/layoutMapping';
+import { playKeystrokeSound, playVictorySound, playDefeatSound } from '@/lib/services/soundEffects';
 import type { SerializedGameState } from '@/lib/game-engine/GameState';
 import type { PlayerState as GamePlayerState } from '@/lib/game-engine/PlayerState';
 import type { SpeedRaceGameState, SpeedRacePlayerData, GridCell, Position } from '@/lib/game-engine/SpeedRaceMultiplayer';
@@ -33,12 +34,21 @@ export default function MultiplayerSpeedRace({
   const [winner, setWinner] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; type: 'correct' | 'error' | 'neutral' } | null>(null);
   const [keyboardLayout, setKeyboardLayout] = useState('qwerty');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundEnabledRef = useRef(true);
 
-  // Load keyboard layout from user settings
+  // Load keyboard layout and sound settings from user settings
   useEffect(() => {
     const settings = getUserSettings();
     setKeyboardLayout(settings.keyboardLayout);
+    setSoundEnabled(settings.soundEnabled);
+    soundEnabledRef.current = settings.soundEnabled;
   }, []);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   // Convert user input from their layout back to QWERTY for server validation
   const convertInputToQwerty = useCallback((key: string): string => {
@@ -72,6 +82,15 @@ export default function MultiplayerSpeedRace({
     const handleGameEnded = (data: { winner: string | null; finalState: any }) => {
       setGameEnded(true);
       setWinner(data.winner);
+
+      // Play victory or defeat sound - use ref to get latest value
+      if (soundEnabledRef.current) {
+        if (data.winner === playerId) {
+          playVictorySound();
+        } else {
+          playDefeatSound();
+        }
+      }
     };
 
     const cleanupState = onSocketEvent('game:state', handleGameState);
@@ -82,6 +101,20 @@ export default function MultiplayerSpeedRace({
       cleanupEnded();
     };
   }, [roomId, playerId]);
+
+  // Convert grid for display in user's layout - MUST be before any conditional returns
+  const displayGrid = useMemo(() => {
+    const raceState = gameState?.gameSpecificState as SpeedRaceGameState | undefined;
+    if (!raceState || !raceState.grid) {
+      return [];
+    }
+    return raceState.grid.map(row =>
+      row.map(cell => ({
+        ...cell,
+        displayChar: convertTextToLayout(cell.char, keyboardLayout)
+      }))
+    );
+  }, [gameState, keyboardLayout]);
 
   // Handle keyboard input
   useEffect(() => {
@@ -108,6 +141,11 @@ export default function MultiplayerSpeedRace({
         },
       }, (response: any) => {
         if (response.success) {
+          // Play correct keystroke sound - use ref to get latest value
+          if (soundEnabledRef.current) {
+            playKeystrokeSound(true);
+          }
+
           // Show feedback for correct keystroke
           setFeedback({
             message: response.feedback?.message || 'Correct!',
@@ -116,6 +154,11 @@ export default function MultiplayerSpeedRace({
 
           setTimeout(() => setFeedback(null), 500);
         } else {
+          // Play incorrect keystroke sound - use ref to get latest value
+          if (soundEnabledRef.current) {
+            playKeystrokeSound(false);
+          }
+
           // Show feedback for error
           setFeedback({
             message: response.feedback?.message || response.error || 'Wrong!',
@@ -152,16 +195,6 @@ export default function MultiplayerSpeedRace({
 
   const currentPlayerState = playerStates.get(playerId);
   const currentPlayerData = currentPlayerState?.gameSpecificData as SpeedRacePlayerData | undefined;
-
-  // Convert grid for display in user's layout
-  const displayGrid = useMemo(() => {
-    return raceState.grid.map(row =>
-      row.map(cell => ({
-        ...cell,
-        displayChar: convertTextToLayout(cell.char, keyboardLayout)
-      }))
-    );
-  }, [raceState.grid, keyboardLayout]);
 
   // Get all players sorted by progress (for ranking)
   const sortedPlayers = Array.from(playerStates.entries())
