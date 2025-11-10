@@ -256,6 +256,13 @@ export class FallingBlocksMultiplayer extends BaseMultiplayerGame {
     // Remove blocks that reached bottom
     state.blocks = state.blocks.filter(b => !blocksToRemove.includes(b.id));
 
+    // Check if all players have finished
+    const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
+    if (allFinished && this.gameState.status !== 'finished') {
+      console.log('🏁 All players finished - ending game');
+      this.gameState.status = 'finished';
+    }
+
     // Increase difficulty over time
     const minutesElapsed = this.gameState.elapsedTime / 60000;
     const newLevel = Math.floor(minutesElapsed / 0.5) + 1; // Level up every 30 seconds

@@ -172,6 +172,9 @@ export class SpeedRaceMultiplayer extends BaseMultiplayerGame {
     const state = this.gameState.gameSpecificState as SpeedRaceGameState;
 
     for (const [playerId, playerState] of this.gameState.players) {
+      // Skip players who have already finished
+      if (playerState.isFinished) continue;
+
       const playerData = playerState.gameSpecificData as SpeedRacePlayerData;
 
       // Check if player completed the race

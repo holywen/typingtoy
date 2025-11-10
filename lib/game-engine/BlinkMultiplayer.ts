@@ -135,6 +135,9 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
 
     // Check each player's character timeout independently
     for (const [playerId, playerState] of this.gameState.players) {
+      // Skip players who have already finished
+      if (playerState.isFinished) continue;
+
       const playerData = playerState.gameSpecificData as BlinkPlayerData;
       const elapsedSinceChar = now - playerData.charStartTime;
 
@@ -143,6 +146,13 @@ export class BlinkMultiplayer extends BaseMultiplayerGame {
         // Character timed out for this player - move to next character
         this.handlePlayerCharTimeout(playerId);
       }
+    }
+
+    // Check if all players have finished
+    const allFinished = Array.from(this.gameState.players.values()).every(p => p.isFinished);
+    if (allFinished && this.gameState.status !== 'finished') {
+      console.log('🏁 All players finished - ending game');
+      this.gameState.status = 'finished';
     }
   }
 

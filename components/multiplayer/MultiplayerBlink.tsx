@@ -167,9 +167,16 @@ export default function MultiplayerBlink({
     };
   }, [playerId]);
 
+  // Get current player state (moved before useEffect that needs it)
+  const currentPlayerState = playerStates.get(playerId);
+
+  // Check if current player finished but game is still ongoing
+  const isWaitingForOthers = currentPlayerState?.isFinished && !gameEnded;
+
   // Timer countdown effect
   useEffect(() => {
-    if (!gameStarted || gameEnded || charStartTime === 0) return;
+    // Stop timer if game ended OR if current player is waiting for others
+    if (!gameStarted || gameEnded || charStartTime === 0 || isWaitingForOthers) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -179,7 +186,7 @@ export default function MultiplayerBlink({
     }, 50); // Update every 50ms for smooth animation
 
     return () => clearInterval(interval);
-  }, [gameStarted, gameEnded, charStartTime, timeLimit]);
+  }, [gameStarted, gameEnded, charStartTime, timeLimit, isWaitingForOthers]);
 
   // Handle keyboard input
   const handleKeyPress = useCallback(
@@ -232,8 +239,7 @@ export default function MultiplayerBlink({
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  // Get current player state
-  const currentPlayerState = playerStates.get(playerId);
+  // Sorted players for rankings
   const sortedPlayers = Array.from(playerStates.values()).sort((a, b) => b.score - a.score);
 
   // For split-screen: arrange players so current player is always on the left
@@ -244,9 +250,6 @@ export default function MultiplayerBlink({
         const others = sortedPlayers.filter(p => p.playerId !== playerId);
         return current ? [current, ...others] : sortedPlayers;
       })();
-
-  // Check if current player finished but game is still ongoing
-  const isWaitingForOthers = currentPlayerState?.isFinished && !gameEnded;
 
   if (!gameStarted) {
     return (
