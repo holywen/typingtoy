@@ -40,7 +40,7 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
       difficulty: room.settings?.difficulty as 'easy' | 'medium' | 'hard' | 'expert' | undefined,
       timeLimit: room.settings?.timeLimit || 120, // Default 2 minutes
       customRules: {
-        lessonNumber: roomSettings?.lessonNumber || customRulesSettings?.lessonNumber,
+        lessonNumber: room.settings?.lessonId || roomSettings?.lessonNumber || customRulesSettings?.lessonNumber,
         totalChars: customRulesSettings?.totalChars || 50, // For Blink
         charTimeLimit: customRulesSettings?.charTimeLimit || 2000, // For Blink (2 seconds per char)
       }
@@ -184,7 +184,7 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
         difficulty: roomSettings?.difficulty as 'easy' | 'medium' | 'hard' | 'expert' | undefined,
         timeLimit: roomSettings?.timeLimit || 120, // Default 2 minutes
         customRules: {
-          lessonNumber: roomSettings?.lessonNumber,
+          lessonNumber: roomSettings?.lessonId || roomSettings?.lessonNumber,
           totalChars: roomSettings?.totalChars || 50, // For Blink
           charTimeLimit: roomSettings?.charTimeLimit || 2000, // For Blink
         },
