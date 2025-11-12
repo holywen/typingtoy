@@ -82,8 +82,6 @@ export interface ServerToClientEvents {
 
   'player:kicked': (data: { roomId: string; playerId: string }) => void;
 
-  'room:auto-rejoin': (data: { roomId: string; room: GameRoom }) => void;
-
   // Match events
   'match:found': (data: { roomId: string; room: GameRoom }) => void;
 
@@ -127,7 +125,7 @@ export interface ServerToClientEvents {
   // Connection events
   'player:connected': (data: { playerId: string }) => void;
 
-  'player:disconnected': (data: { playerId: string }) => void;
+  'player:disconnected': (data: { roomId?: string; playerId: string; displayName?: string }) => void;
 
   // Lobby events
   'lobby:players': (data: {

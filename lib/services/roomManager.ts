@@ -87,31 +87,29 @@ export class RoomManager {
     playerId: string;
     playerName: string;
     password?: string;
-  }): Promise<{ success: boolean; room?: GameRoom; error?: string; isReconnect?: boolean }> {
+  }): Promise<{ success: boolean; room?: GameRoom; error?: string }> {
     const room = await this.getRoom(params.roomId);
 
     if (!room) {
       return { success: false, error: 'Room not found' };
     }
 
+    // Check if player already in room
+    const existingPlayer = room.players.find(p => p.playerId === params.playerId);
+    if (existingPlayer) {
+      // Player already in room (e.g., duplicate join request)
+      console.log(`👤 Player ${params.playerName} already in room`);
+      return { success: true, room };
+    }
+
+    // New player joining - check status (only allow joining waiting rooms)
     if (room.status !== 'waiting') {
-      return { success: false, error: 'Room is not accepting players' };
+      return { success: false, error: 'Cannot join - game already in progress' };
     }
 
     // Check password
     if (room.password && room.password !== params.password) {
       return { success: false, error: 'Incorrect password' };
-    }
-
-    // Check if player already in room (before checking if full)
-    const existingPlayer = room.players.find(p => p.playerId === params.playerId);
-    if (existingPlayer) {
-      // If player is already in room, this is the initial join after room creation
-      // (not a true reconnect, because disconnected players are removed from room.players)
-      console.log(`👤 Player ${params.playerName} already in room (initial join after creation)`);
-      // Don't change isConnected (already true), and return isReconnect: false
-      // so that the join message will be sent
-      return { success: true, room, isReconnect: false };
     }
 
     // Check if room is full (after checking existing player)
@@ -232,6 +230,7 @@ export class RoomManager {
 
   /**
    * Start game (host only)
+   * Room must be in waiting status with all players ready
    */
   static async startGame(roomId: string, hostId: string): Promise<{ success: boolean; error?: string }> {
     const room = await this.getRoom(roomId);
@@ -256,7 +255,7 @@ export class RoomManager {
       return { success: false, error: 'All players must be ready' };
     }
 
-    // Update room status
+    // Update room status to playing
     room.status = 'playing';
     room.startedAt = new Date();
 
@@ -264,7 +263,7 @@ export class RoomManager {
     await connectDB();
     await GameRoomModel.findOneAndUpdate(
       { roomId },
-      { $set: { status: room.status, startedAt: room.startedAt } }
+      { $set: { status: room.status, startedAt: room.startedAt, players: room.players } }
     );
     await RoomCache.updateRoomStatus(roomId, 'playing');
 
@@ -307,20 +306,6 @@ export class RoomManager {
     await connectDB();
     await GameRoomModel.findOneAndDelete({ roomId });
     await RoomCache.deleteRoom(roomId);
-  }
-
-  /**
-   * Update player connection status
-   */
-  static async updatePlayerConnection(roomId: string, playerId: string, isConnected: boolean): Promise<void> {
-    const room = await this.getRoom(roomId);
-    if (!room) return;
-
-    const player = room.players.find(p => p.playerId === playerId);
-    if (player) {
-      player.isConnected = isConnected;
-      await this.updateRoom(room);
-    }
   }
 
   /**

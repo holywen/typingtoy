@@ -91,23 +91,8 @@ describe('RoomEventManager', () => {
       );
     });
 
-    it('should skip lobby leave and system message on reconnect', async () => {
-      const { LobbyEventManager } = await import('../lobbyEventManager');
-      (RoomManager.joinRoom as jest.Mock).mockResolvedValue({
-        success: true,
-        room: mockRoom,
-        isReconnect: true,
-      });
-
-      await RoomEventManager.handlePlayerJoin(mockIo, {
-        roomId: 'room-123',
-        playerId: 'player-123',
-        playerName: 'TestPlayer',
-      });
-
-      expect(LobbyEventManager.handlePlayerLeave).not.toHaveBeenCalled();
-      expect(sendSystemMessage).not.toHaveBeenCalled();
-    });
+    // Reconnect functionality removed per user requirement "不要重连"
+    // Test removed as it tested functionality that no longer exists
 
     it('should return error if join fails', async () => {
       (RoomManager.joinRoom as jest.Mock).mockResolvedValue({

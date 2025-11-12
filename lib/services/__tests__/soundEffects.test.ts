@@ -214,5 +214,186 @@ describe('soundEffects', () => {
 
       expect((global as any).webkitAudioContext).toHaveBeenCalled();
     });
+
+    it('should resume suspended AudioContext', () => {
+      mockAudioContext.state = 'suspended';
+      mockAudioContext.resume = jest.fn().mockResolvedValue(undefined);
+
+      const { playKeystrokeSound } = require('../soundEffects');
+      playKeystrokeSound();
+
+      expect(mockAudioContext.resume).toHaveBeenCalled();
+    });
+
+    it('should not resume running AudioContext', () => {
+      mockAudioContext.state = 'running';
+      mockAudioContext.resume = jest.fn();
+
+      const { playKeystrokeSound } = require('../soundEffects');
+      playKeystrokeSound();
+
+      expect(mockAudioContext.resume).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('initializeAudio', () => {
+    it('should initialize audio context on first call', () => {
+      const { initializeAudio } = require('../soundEffects');
+      initializeAudio();
+
+      expect(global.AudioContext).toHaveBeenCalled();
+    });
+
+    it('should not create multiple contexts on repeated calls', () => {
+      const { initializeAudio } = require('../soundEffects');
+      initializeAudio();
+      initializeAudio();
+      initializeAudio();
+
+      expect(global.AudioContext).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('playCountdownSound', () => {
+    it('should play countdown sound for count 3', () => {
+      const { playCountdownSound } = require('../soundEffects');
+      playCountdownSound(3);
+
+      expect(mockAudioContext.createOscillator).toHaveBeenCalled();
+      expect(mockOscillator.frequency.value).toBe(440); // A4
+    });
+
+    it('should play countdown sound for count 2', () => {
+      const { playCountdownSound } = require('../soundEffects');
+      playCountdownSound(2);
+
+      expect(mockOscillator.frequency.value).toBe(523); // C5
+    });
+
+    it('should play countdown sound for count 1', () => {
+      const { playCountdownSound } = require('../soundEffects');
+      playCountdownSound(1);
+
+      expect(mockOscillator.frequency.value).toBe(659); // E5
+    });
+
+    it('should default to 440Hz for invalid count', () => {
+      const { playCountdownSound } = require('../soundEffects');
+      playCountdownSound(0);
+
+      expect(mockOscillator.frequency.value).toBe(440);
+    });
+
+    it('should handle audio errors gracefully', () => {
+      mockAudioContext.createOscillator.mockImplementation(() => {
+        throw new Error('Audio not available');
+      });
+
+      const { playCountdownSound } = require('../soundEffects');
+      expect(() => playCountdownSound(3)).not.toThrow();
+    });
+  });
+
+  describe('playGameStartSound', () => {
+    it('should play four ascending notes', () => {
+      const { playGameStartSound } = require('../soundEffects');
+      playGameStartSound();
+
+      expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(4);
+      expect(mockAudioContext.createGain).toHaveBeenCalledTimes(4);
+    });
+
+    it('should handle audio errors gracefully', () => {
+      mockAudioContext.createOscillator.mockImplementation(() => {
+        throw new Error('Audio not available');
+      });
+
+      const { playGameStartSound } = require('../soundEffects');
+      expect(() => playGameStartSound()).not.toThrow();
+    });
+
+    it('should connect oscillators to gain nodes', () => {
+      const { playGameStartSound } = require('../soundEffects');
+      playGameStartSound();
+
+      expect(mockOscillator.connect).toHaveBeenCalledTimes(4);
+      expect(mockGainNode.connect).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe('playVictorySound', () => {
+    it('should play five ascending notes', () => {
+      const { playVictorySound } = require('../soundEffects');
+      playVictorySound();
+
+      expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(5);
+      expect(mockAudioContext.createGain).toHaveBeenCalledTimes(5);
+    });
+
+    it('should handle audio errors gracefully', () => {
+      mockAudioContext.createOscillator.mockImplementation(() => {
+        throw new Error('Audio not available');
+      });
+
+      const { playVictorySound } = require('../soundEffects');
+      expect(() => playVictorySound()).not.toThrow();
+    });
+
+    it('should connect all oscillators', () => {
+      const { playVictorySound } = require('../soundEffects');
+      playVictorySound();
+
+      expect(mockOscillator.connect).toHaveBeenCalledTimes(5);
+      expect(mockGainNode.connect).toHaveBeenCalledTimes(5);
+    });
+
+    it('should use sine wave oscillator', () => {
+      const { playVictorySound } = require('../soundEffects');
+      playVictorySound();
+
+      expect(mockOscillator.type).toBe('sine');
+    });
+  });
+
+  describe('playDefeatSound', () => {
+    it('should play three descending notes', () => {
+      const { playDefeatSound } = require('../soundEffects');
+      playDefeatSound();
+
+      expect(mockAudioContext.createOscillator).toHaveBeenCalledTimes(3);
+      expect(mockAudioContext.createGain).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle audio errors gracefully', () => {
+      mockAudioContext.createOscillator.mockImplementation(() => {
+        throw new Error('Audio not available');
+      });
+
+      const { playDefeatSound } = require('../soundEffects');
+      expect(() => playDefeatSound()).not.toThrow();
+    });
+
+    it('should connect oscillators to gain nodes', () => {
+      const { playDefeatSound } = require('../soundEffects');
+      playDefeatSound();
+
+      expect(mockOscillator.connect).toHaveBeenCalledTimes(3);
+      expect(mockGainNode.connect).toHaveBeenCalledTimes(3);
+    });
+
+    it('should use sine wave oscillator', () => {
+      const { playDefeatSound } = require('../soundEffects');
+      playDefeatSound();
+
+      expect(mockOscillator.type).toBe('sine');
+    });
+
+    it('should set gain values for fade out', () => {
+      const { playDefeatSound } = require('../soundEffects');
+      playDefeatSound();
+
+      expect(mockGainNode.gain.setValueAtTime).toHaveBeenCalled();
+      expect(mockGainNode.gain.exponentialRampToValueAtTime).toHaveBeenCalled();
+    });
   });
 });

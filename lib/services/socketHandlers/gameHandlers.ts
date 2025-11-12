@@ -14,6 +14,9 @@ import { saveGameSession } from '../gameSessionService';
 // Store active game instances (can be any game type)
 const activeGames = new Map<string, BaseMultiplayerGame>();
 
+// Store game broadcast loops
+const gameLoops = new Map<string, NodeJS.Timeout>();
+
 // Store last keystroke timestamp for each player (for anti-cheat)
 const playerLastKeystroke = new Map<string, number>();
 
@@ -99,6 +102,12 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
 
     activeGames.set(roomId, game);
 
+    // Update room status to 'playing'
+    room.status = 'playing';
+    room.startedAt = new Date();
+    await RoomManager.updateRoom(room);
+    console.log(`🎮 Room ${roomId} status updated to 'playing'`);
+
     // Start the game immediately (countdown already handled by room handler)
     game.startImmediate();
 
@@ -110,6 +119,7 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
       // Check if game is over
       if (game.isGameOver()) {
         clearInterval(broadcastLoop);
+        gameLoops.delete(roomId);
         game.stop(); // Stop the game's internal update loop
         const winner = game.getWinner();
         console.log(`🏁 Game ended in room ${roomId}, winner: ${winner}`);
@@ -130,11 +140,28 @@ export async function startGameForRoom(io: TypedServer, roomId: string): Promise
         });
         activeGames.delete(roomId);
 
-        // Update room status back to waiting
-        room.status = 'waiting';
-        RoomManager.updateRoom(room).catch(console.error);
+        // Update room status back to waiting and reset ready status
+        (async () => {
+          try {
+            const updatedRoom = await RoomManager.getRoom(roomId);
+            if (updatedRoom) {
+              updatedRoom.status = 'waiting';
+              updatedRoom.players.forEach(player => {
+                player.isReady = false;
+              });
+              await RoomManager.updateRoom(updatedRoom);
+              console.log(`✅ Room ${roomId} status updated to 'waiting' after game ended`);
+              io.to(roomId).emit('room:updated', { room: updatedRoom });
+            }
+          } catch (error) {
+            console.error(`Error updating room status after game ended:`, error);
+          }
+        })();
       }
     }, 100);
+
+    // Store the game loop so we can clean it up if needed
+    gameLoops.set(roomId, broadcastLoop);
 
     // Emit game started event
     io.to(roomId).emit('game:started', {
@@ -236,6 +263,7 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
         // Check if game is over
         if (game.isGameOver()) {
           clearInterval(gameLoop);
+          gameLoops.delete(roomId);
           const winner = game.getWinner();
           console.log(`🏁 Game ended in room ${roomId}, winner: ${winner}`);
 
@@ -254,15 +282,29 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
             finalState: state,
           });
           activeGames.delete(roomId);
-          // Update room status back to waiting
-          RoomManager.getRoom(roomId).then(r => {
-            if (r) {
-              r.status = 'waiting';
-              RoomManager.updateRoom(r).catch(console.error);
+
+          // Update room status back to waiting and reset ready status
+          (async () => {
+            try {
+              const updatedRoom = await RoomManager.getRoom(roomId);
+              if (updatedRoom) {
+                updatedRoom.status = 'waiting';
+                updatedRoom.players.forEach(player => {
+                  player.isReady = false;
+                });
+                await RoomManager.updateRoom(updatedRoom);
+                console.log(`✅ Room ${roomId} status updated to 'waiting' after game ended`);
+                io.to(roomId).emit('room:updated', { room: updatedRoom });
+              }
+            } catch (error) {
+              console.error(`Error updating room status after game ended:`, error);
             }
-          }).catch(console.error);
+          })();
         }
       }, 100);
+
+      // Store the game loop so we can clean it up if needed
+      gameLoops.set(roomId, gameLoop);
 
       // Emit game started event
       io.to(roomId).emit('game:started', {
@@ -376,9 +418,24 @@ export function registerGameHandlers(io: TypedServer, socket: TypedSocket): void
 
 // Export helper to clean up game on room deletion
 export function cleanupGame(roomId: string): void {
+  // Stop game loop if running
+  const loop = gameLoops.get(roomId);
+  if (loop) {
+    clearInterval(loop);
+    gameLoops.delete(roomId);
+    console.log(`🛑 Stopped game loop for room ${roomId}`);
+  }
+
+  // Remove game instance
   const game = activeGames.get(roomId);
   if (game) {
+    game.stop(); // Stop internal game update loop
     activeGames.delete(roomId);
-    console.log(`🧹 Cleaned up game for room ${roomId}`);
+    console.log(`🧹 Cleaned up game instance for room ${roomId}`);
   }
+}
+
+// Export helper to get active game for a room
+export function getActiveGame(roomId: string): BaseMultiplayerGame | undefined {
+  return activeGames.get(roomId);
 }

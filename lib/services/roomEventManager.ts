@@ -25,7 +25,7 @@ export class RoomEventManager {
       playerName: string;
       password?: string;
     }
-  ): Promise<{ success: boolean; room?: GameRoom; error?: string; isReconnect?: boolean }> {
+  ): Promise<{ success: boolean; room?: GameRoom; error?: string }> {
     console.log(`🚪 [EVENT MGR] Player ${params.playerName} joining room ${params.roomId}`);
 
     // 1. Update state (RoomManager handles duplicate check)
@@ -36,13 +36,11 @@ export class RoomEventManager {
     }
 
     // 2. Remove player from lobby (they're now in a room)
-    if (!result.isReconnect) {
-      const { LobbyEventManager } = await import('./lobbyEventManager');
-      await LobbyEventManager.handlePlayerLeave(io, {
-        playerId: params.playerId,
-        playerName: params.playerName,
-      });
-    }
+    const { LobbyEventManager } = await import('./lobbyEventManager');
+    await LobbyEventManager.handlePlayerLeave(io, {
+      playerId: params.playerId,
+      playerName: params.playerName,
+    });
 
     // 3. Emit Socket.io events to clients
     io.to(params.roomId).emit('room:updated', { room: result.room! });
@@ -51,13 +49,9 @@ export class RoomEventManager {
       player: result.room!.players.find(p => p.playerId === params.playerId),
     });
 
-    // 4. Send system message (only if new join, not reconnect)
-    if (!result.isReconnect) {
-      console.log(`📢 [EVENT MGR] Sending join message for ${params.playerName}`);
-      await sendSystemMessage(io, 'room', `${params.playerName} joined the room`, params.roomId);
-    } else {
-      console.log(`🔄 [EVENT MGR] Player ${params.playerName} reconnected, no message sent`);
-    }
+    // 4. Send system message
+    console.log(`📢 [EVENT MGR] Sending join message for ${params.playerName}`);
+    await sendSystemMessage(io, 'room', `${params.playerName} joined the room`, params.roomId);
 
     return result;
   }

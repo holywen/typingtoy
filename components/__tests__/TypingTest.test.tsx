@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import TypingTest from '../TypingTest';
 
@@ -197,12 +197,16 @@ describe('TypingTest Component', () => {
       const textDisplay = document.querySelector('[tabindex="0"]') as HTMLElement;
 
       // Type "hello"
-      'hello'.split('').forEach(char => {
-        fireEvent.keyDown(textDisplay, { key: char });
+      act(() => {
+        'hello'.split('').forEach(char => {
+          fireEvent.keyDown(textDisplay, { key: char });
+        });
       });
 
       // Press Enter (should be accepted as next char is newline)
-      fireEvent.keyDown(textDisplay, { key: 'Enter' });
+      act(() => {
+        fireEvent.keyDown(textDisplay, { key: 'Enter' });
+      });
 
       expect(textDisplay).toBeInTheDocument();
     });

@@ -262,6 +262,13 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       }
     };
 
+    const handlePlayerDisconnected = (data: { roomId?: string; playerId: string; displayName?: string }) => {
+      if (data.roomId === roomId || !data.roomId) {
+        console.log(`❌ Player ${data.displayName || data.playerId} disconnected`);
+        // Room will be updated via room:updated event
+      }
+    };
+
     console.log('🎧 [ROOM] Setting up room event listeners for room:', roomId);
     const cleanupUpdated = onSocketEvent('room:updated', handleRoomUpdated);
     const cleanupJoined = onSocketEvent('player:joined', handlePlayerJoined);
@@ -270,6 +277,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
     const cleanupStarting = onSocketEvent('game:countdown', handleGameStarting);
     const cleanupStarted = onSocketEvent('game:started', handleGameStarted);
     const cleanupDeleted = onSocketEvent('room:deleted', handleRoomDeleted);
+    const cleanupDisconnected = onSocketEvent('player:disconnected', handlePlayerDisconnected);
 
     return () => {
       console.log('🧹 [ROOM] Cleaning up room event listeners for room:', roomId);
@@ -280,6 +288,7 @@ export default function RoomPage({ params }: { params: Promise<{ roomId: string 
       cleanupStarting();
       cleanupStarted();
       cleanupDeleted();
+      cleanupDisconnected();
     };
   }, [roomId, playerId, router]); // Removed isHost from dependencies
 

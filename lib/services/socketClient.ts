@@ -76,15 +76,6 @@ export function initSocketClient(options: SocketClientOptions): TypedClientSocke
     console.error('Socket error:', data);
   });
 
-  // Handle auto-rejoin when reconnecting to a room
-  socket.on('room:auto-rejoin', (data) => {
-    console.log('🔄 Auto-rejoining room:', data.roomId);
-    // Navigate to room page
-    if (typeof window !== 'undefined') {
-      window.location.href = `/multiplayer/room/${data.roomId}`;
-    }
-  });
-
   return socket;
 }
 

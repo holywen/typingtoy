@@ -137,65 +137,16 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     const { playerId, displayName } = socket.data;
     console.log(`✅ Player connected: ${displayName} (${playerId})`);
 
-    // Clean up any stale room memberships from previous sessions
-    try {
-      const { RoomManager } = await import('./roomManager');
-      const existingRoom = await RoomManager.getRoomByPlayerId(playerId);
-
-      if (existingRoom) {
-        console.log(`🧹 Cleaning up stale room membership for ${displayName}`);
-        await RoomManager.leaveRoom(existingRoom.roomId, playerId);
-
-        // Notify others in the room if it still exists
-        const room = await RoomManager.getRoom(existingRoom.roomId);
-        if (room) {
-          io!.to(existingRoom.roomId).emit('room:updated', { room });
-          io!.to(existingRoom.roomId).emit('player:left', {
-            roomId: existingRoom.roomId,
-            playerId
-          });
-        } else {
-          io!.emit('room:deleted', { roomId: existingRoom.roomId });
-        }
-      }
-    } catch (error) {
-      console.error('Error cleaning up stale room:', error);
-    }
-
-    // Add to online players set
     // Emit connection confirmation
     socket.emit('player:connected', { playerId });
 
-    // Check if player was in a room before disconnecting (auto-rejoin)
-    const existingRoom = await RoomManager.getRoomByPlayerId(playerId);
-
-    if (existingRoom) {
-      console.log(`🔄 Player ${displayName} reconnecting to room ${existingRoom.roomId}`);
-
-      // Join socket room
-      socket.join(existingRoom.roomId);
-      socket.data.currentRoomId = existingRoom.roomId;
-
-      // Update player connection status
-      await RoomManager.updatePlayerConnection(existingRoom.roomId, playerId, true);
-
-      // Notify client to navigate to room page
-      socket.emit('room:auto-rejoin', {
-        roomId: existingRoom.roomId,
-        room: existingRoom
-      });
-
-      // Notify room members that player reconnected
-      io!.to(existingRoom.roomId).emit('room:updated', { room: existingRoom });
-    } else {
-      // Player not in a room, join lobby
-      const { LobbyEventManager } = await import('./lobbyEventManager');
-      await LobbyEventManager.handlePlayerJoin(io!, {
-        playerId,
-        playerName: displayName,
-        socketId: socket.id,
-      });
-    }
+    // Player joins lobby (no auto-rejoin - players cannot return to games after disconnect)
+    const { LobbyEventManager } = await import('./lobbyEventManager');
+    await LobbyEventManager.handlePlayerJoin(io!, {
+      playerId,
+      playerName: displayName,
+      socketId: socket.id,
+    });
 
     // Handle player identification
     socket.on('player:identify', (data) => {
@@ -206,7 +157,7 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     });
 
     // Handle lobby presence management for leaderboard viewing
-    socket.on('lobby:viewing-leaderboard', async (data) => {
+    socket.on('lobby:viewing-leaderboard', async () => {
       console.log(`📊 Player ${displayName} viewing leaderboard`);
       const { LobbyEventManager } = await import('./lobbyEventManager');
       await LobbyEventManager.handlePlayerLeave(io!, {
@@ -215,7 +166,7 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       });
     });
 
-    socket.on('lobby:left-leaderboard', async (data) => {
+    socket.on('lobby:left-leaderboard', async () => {
       console.log(`📊 Player ${displayName} left leaderboard, rejoining lobby`);
       const { LobbyEventManager } = await import('./lobbyEventManager');
       await LobbyEventManager.handlePlayerJoin(io!, {
@@ -237,15 +188,49 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
           // Leave socket room
           socket.leave(roomId);
 
-          // Import RoomEventManager
-          const { RoomEventManager } = await import('./roomEventManager');
+          // Check room status before removing player
+          const room = await RoomManager.getRoom(roomId);
 
-          // Use RoomEventManager - it handles duplicate check and system messages
-          await RoomEventManager.handlePlayerLeave(io!, {
-            roomId,
-            playerId,
-            playerName: displayName,
-          });
+          if (room && room.status === 'playing') {
+            // Game is active - remove player from room but let game continue for others
+            console.log(`🎮 Player ${displayName} disconnected during game - removing from room`);
+
+            // Remove player from room
+            await RoomManager.leaveRoom(roomId, playerId);
+
+            // Check if room still exists (leaveRoom deletes if no players left)
+            const updatedRoom = await RoomManager.getRoom(roomId);
+
+            if (!updatedRoom) {
+              // Last player left - stop game and delete room
+              console.log(`🛑 Last player left - deleting room ${roomId}`);
+
+              const { cleanupGame } = await import('./socketHandlers/gameHandlers');
+              cleanupGame(roomId);
+
+              io!.emit('room:deleted', { roomId });
+            } else {
+              // Other players still in room - let game continue
+              console.log(`✅ Player ${displayName} removed from room, ${updatedRoom.players.length} players still in game`);
+
+              // Notify other players
+              io!.to(roomId).emit('player:left', { roomId, playerId });
+              io!.to(roomId).emit('room:updated', { room: updatedRoom });
+            }
+          } else {
+            // Game not active - remove player from room
+            console.log(`🚪 Player ${displayName} disconnected from waiting room - removing`);
+
+            // Import RoomEventManager
+            const { RoomEventManager } = await import('./roomEventManager');
+
+            // Use RoomEventManager - it handles duplicate check and system messages
+            await RoomEventManager.handlePlayerLeave(io!, {
+              roomId,
+              playerId,
+              playerName: displayName,
+            });
+          }
 
           socket.data.currentRoomId = undefined;
         }
