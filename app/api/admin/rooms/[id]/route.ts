@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin';
 import connectDB from '@/lib/db/mongodb';
 import GameRoom from '@/lib/db/models/GameRoom';
+import mongoose from 'mongoose';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -21,9 +22,10 @@ export async function GET(
     await connectDB();
 
     // Find room by ID or roomId
-    const room = await GameRoom.findOne({
-      $or: [{ _id: id }, { roomId: id }],
-    }).lean();
+    const query = mongoose.Types.ObjectId.isValid(id)
+      ? { $or: [{ _id: id }, { roomId: id }] }
+      : { roomId: id };
+    const room = await GameRoom.findOne(query).lean();
 
     if (!room) {
       return NextResponse.json(
@@ -64,9 +66,10 @@ export async function DELETE(
     await connectDB();
 
     // Find and delete room by ID or roomId
-    const room = await GameRoom.findOneAndDelete({
-      $or: [{ _id: id }, { roomId: id }],
-    });
+    const query = mongoose.Types.ObjectId.isValid(id)
+      ? { $or: [{ _id: id }, { roomId: id }] }
+      : { roomId: id };
+    const room = await GameRoom.findOneAndDelete(query);
 
     if (!room) {
       return NextResponse.json(
@@ -104,15 +107,22 @@ export async function PATCH(
     await requireAdmin();
 
     const { id } = await params;
-    const body = await request.json();
+
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     // Connect to database
     await connectDB();
 
     // Find room
-    const room = await GameRoom.findOne({
-      $or: [{ _id: id }, { roomId: id }],
-    });
+    const query = mongoose.Types.ObjectId.isValid(id)
+      ? { $or: [{ _id: id }, { roomId: id }] }
+      : { roomId: id };
+    const room = await GameRoom.findOne(query);
 
     if (!room) {
       return NextResponse.json(

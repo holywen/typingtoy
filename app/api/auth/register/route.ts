@@ -8,7 +8,14 @@ import { emailService } from '@/lib/services/emailService';
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json();
+    let body: { email?: string; password?: string; name?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { email, password, name } = body;
 
     if (!email || !password) {
       return NextResponse.json(
@@ -16,6 +23,28 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long' },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize name - prevent HTML injection in emails and display
+    const sanitizedName = name
+      ? name.replace(/[<>&'"]/g, '').trim().slice(0, 50)
+      : undefined;
 
     // Connect to MongoDB
     await connectDB();
@@ -33,18 +62,18 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Check if this is the first user (will be admin)
-    const userCount = await User.countDocuments();
-    const isFirstUser = userCount === 0;
-
     // Create user
-    // First user (admin) gets auto-verified, others need to verify email
+    // First, check if any admin already exists to avoid race condition
+    // (Two simultaneous registrations can't both become admin)
+    const existingAdmin = await User.findOne({ role: 'admin' }).select('_id').lean();
+    const isAdmin = !existingAdmin;
+
     const user = await User.create({
       email,
       password: hashedPassword,
-      name: name || email.split('@')[0],
-      emailVerified: isFirstUser ? new Date() : null, // Auto-verify first admin user
-      role: isFirstUser ? 'admin' : 'user', // First user becomes admin
+      name: sanitizedName || email.split('@')[0],
+      emailVerified: isAdmin ? new Date() : null,
+      role: isAdmin ? 'admin' : 'user',
       settings: {
         keyboardLayout: 'qwerty',
         soundEnabled: true,
@@ -52,19 +81,14 @@ export async function POST(request: Request) {
     });
 
     // Log if first user/admin was created
-    if (isFirstUser) {
+    if (isAdmin) {
       console.log('🔐 First user created - assigned admin role and auto-verified:', email);
 
       // Return success immediately for first admin user (no email verification needed)
       return NextResponse.json(
         {
           message: 'Admin account created successfully. You can now sign in.',
-          user: {
-            id: user._id,
-            email: user.email,
-            name: user.name,
-            role: 'admin',
-          },
+          role: 'admin', // Used by frontend to trigger auto-login
         },
         { status: 201 }
       );
@@ -94,11 +118,6 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: 'User created successfully. Please check your email to verify your account.',
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-        },
       },
       { status: 201 }
     );

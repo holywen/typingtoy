@@ -41,10 +41,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Simple in-memory rate limiter for score submissions
+const scoreSubmissionMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkScoreRateLimit(playerId: string): boolean {
+  const now = Date.now();
+  const entry = scoreSubmissionMap.get(playerId);
+  if (!entry || now > entry.resetAt) {
+    scoreSubmissionMap.set(playerId, { count: 1, resetAt: now + 60000 });
+    return true;
+  }
+  if (entry.count >= 10) {
+    return false; // Max 10 score submissions per minute
+  }
+  entry.count++;
+  return true;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const body = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     const {
       playerId,
@@ -61,6 +83,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
+      );
+    }
+
+    // Rate limiting per player
+    if (!checkScoreRateLimit(playerId)) {
+      return NextResponse.json(
+        { error: 'Too many score submissions. Please wait.' },
+        { status: 429 }
       );
     }
 
@@ -81,9 +111,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Clip score to reasonable bounds
+    const sanitizedScore = Math.max(0, Math.min(999999, Number(score) || 0));
+
+    // Validate/sanitize displayName
+    const sanitizedName = String(displayName).replace(/[<>&'"]/g, '').trim().slice(0, 30);
+
     // For authenticated users, verify the playerId matches session
-    if (session?.user && playerType === 'user') {
+    // This check applies regardless of playerType to prevent score spoofing
+    if (session?.user) {
       const userId = (session.user as any).id;
+      if (!userId) {
+        return NextResponse.json({ error: 'Invalid session' }, { status: 403 });
+      }
+      // Authenticated users must submit scores under their own userId
       if (playerId !== userId) {
         return NextResponse.json(
           { error: 'Player ID mismatch' },
@@ -96,10 +137,10 @@ export async function POST(request: NextRequest) {
     const entries = await submitScore(
       playerId,
       playerType || 'guest',
-      displayName,
+      sanitizedName,
       gameType,
       sessionId,
-      score,
+      sanitizedScore,
       metrics
     );
 

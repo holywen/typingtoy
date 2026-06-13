@@ -40,7 +40,6 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
     SocketData
   >(httpServer, {
     cors: {
-      // Allow same-origin requests (app and socket server on same domain)
       origin: (origin, callback) => {
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) {
@@ -48,11 +47,18 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
         }
         // In development, allow localhost
         if (process.env.NODE_ENV !== 'production') {
+          if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+            return callback(null, true);
+          }
           return callback(null, true);
         }
-        // In production, allow same origin only
-        // Since Next.js and Socket.IO server run on the same domain
-        callback(null, true);
+        // In production, only allow the configured app URL
+        const allowedOrigin = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+        if (allowedOrigin && origin === allowedOrigin) {
+          return callback(null, true);
+        }
+        // Allow same-origin (no origin header)
+        callback(new Error('Origin not allowed'), false);
       },
       methods: ['GET', 'POST'],
       credentials: true,
@@ -67,13 +73,32 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
   // Connection middleware - player identification
   io.use(async (socket, next) => {
     try {
-      const { userId, deviceId, displayName } = socket.handshake.auth;
+      const { deviceId, displayName } = socket.handshake.auth;
+      let userId: string | undefined;
 
       if (!deviceId) {
         return next(new Error('Device ID required'));
       }
 
-      // Set socket data
+      // Verify authentication server-side rather than trusting client-provided userId
+      // Extract session cookie from handshake headers and decode JWT
+      const cookies = socket.handshake.headers.cookie;
+      if (cookies) {
+        try {
+          const { getToken } = await import('@auth/core/jwt');
+          const token = await getToken({
+            req: { headers: { cookie: cookies } },
+            secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET!,
+          });
+          if (token?.sub) {
+            userId = token.sub;
+          }
+        } catch (err) {
+          // Fall through: treat as guest if session verification fails
+        }
+      }
+
+      // Set socket data - use server-verified userId, never trust client-provided one
       socket.data.deviceId = deviceId;
       socket.data.displayName = displayName || 'Guest';
       socket.data.playerId = userId || deviceId;
@@ -148,12 +173,11 @@ export function initSocketServer(httpServer: HTTPServer): TypedServer {
       socketId: socket.id,
     });
 
-    // Handle player identification
+    // Handle player identification - only allow non-security-critical fields
+    // userId is NEVER overridden from client; only the io.use middleware sets it via JWT
     socket.on('player:identify', (data) => {
-      socket.data.userId = data.userId;
-      socket.data.deviceId = data.deviceId;
       socket.data.displayName = data.displayName;
-      socket.data.playerId = data.userId || data.deviceId;
+      socket.data.deviceId = data.deviceId;
     });
 
     // Handle lobby presence management for leaderboard viewing

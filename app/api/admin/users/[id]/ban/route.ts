@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin';
 import { auth } from '@/lib/auth';
 import connectDB from '@/lib/db/mongodb';
 import User from '@/lib/db/models/User';
+import mongoose from 'mongoose';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -17,7 +18,22 @@ export async function POST(
     await requireAdmin();
 
     const { id } = await params;
-    const body = await request.json();
+
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { error: 'Invalid user ID format' },
+        { status: 400 }
+      );
+    }
+
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
     const { banned, banReason } = body;
 
     // Connect to database

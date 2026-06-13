@@ -37,17 +37,28 @@ class EmailService {
     const transporter = this.getTransporter();
     const from = process.env.SMTP_FROM || process.env.SMTP_USER;
 
+    // Validate email to prevent SMTP injection
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(options.to)) {
+      throw new Error('Invalid recipient email address');
+    }
+
+    // Strip CRLF from subject to prevent SMTP injection
+    const safeSubject = options.subject.replace(/[\r\n]/g, '').trim();
+
     await transporter.sendMail({
       from,
       to: options.to,
-      subject: options.subject,
+      subject: safeSubject,
       html: options.html,
     });
   }
 
   async sendVerificationEmail(email: string, token: string, userName?: string): Promise<void> {
     const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}`;
-    const displayName = userName || email.split('@')[0];
+    const displayName = (userName || email.split('@')[0])
+      .replace(/[<>&'"]/g, '')  // Sanitize against HTML injection
+      .trim();
 
     const html = `
       <!DOCTYPE html>
@@ -166,7 +177,9 @@ class EmailService {
 
   async sendPasswordResetEmail(email: string, token: string, userName?: string): Promise<void> {
     const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${token}`;
-    const displayName = userName || email.split('@')[0];
+    const displayName = (userName || email.split('@')[0])
+      .replace(/[<>&'"]/g, '')
+      .trim();
 
     const html = `
       <!DOCTYPE html>

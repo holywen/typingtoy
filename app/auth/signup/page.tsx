@@ -34,7 +34,7 @@ export default function SignUpPage() {
       return;
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       setError(t.auth.errors.passwordTooShort);
       return;
     }
@@ -65,7 +65,7 @@ export default function SignUpPage() {
 
       // Check if user is admin (first user) - they can auto-login
       // Regular users need to verify email first
-      if (data.user?.role === 'admin') {
+      if (data.role === 'admin') {
         // Admin user - auto sign in
         const result = await signIn('credentials', {
           email,

@@ -10,7 +10,6 @@ import { ObjectId } from 'mongodb';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: MongoDBAdapter(clientPromise),
-  trustHost: true,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -68,6 +67,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: {
     strategy: 'jwt',
+    maxAge: 7 * 24 * 60 * 60, // 7 days
+    updateAge: 24 * 60 * 60, // Update session every 24 hours
+  },
+  jwt: {
+    maxAge: 7 * 24 * 60 * 60, // 7 days
   },
   pages: {
     signIn: '/auth/signin',

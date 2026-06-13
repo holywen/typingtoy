@@ -64,7 +64,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data } = await request.json();
+    let data: any;
+    try {
+      data = await request.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
 
     await connectDB();
 
@@ -74,30 +79,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Update user settings
-    if (data.settings) {
-      user.settings = data.settings;
+    // Whitelist allowed settings fields to prevent mass assignment
+    if (data.settings && typeof data.settings === 'object') {
+      const allowedSettings = ['keyboardLayout', 'soundEnabled', 'language', 'theme', 'showKeyboard', 'highlightErrors'];
+      const sanitizedSettings: Record<string, any> = {};
+      for (const key of allowedSettings) {
+        if (key in data.settings) {
+          sanitizedSettings[key] = data.settings[key];
+        }
+      }
+      user.settings = { ...user.settings, ...sanitizedSettings };
     }
 
-    // Update last positions
-    if (data.lastPositions) {
+    // Update last positions - validate structure
+    if (data.lastPositions && typeof data.lastPositions === 'object') {
       const lastPositionsMap = new Map();
-      Object.entries(data.lastPositions).forEach(([key, value]: [string, any]) => {
-        lastPositionsMap.set(key, {
-          lessonId: value.lessonId,
-          exerciseIndex: value.exerciseIndex,
-          timestamp: new Date(value.timestamp),
-        });
-      });
-      user.lastPositions = lastPositionsMap;
+      for (const [key, value] of Object.entries(data.lastPositions)) {
+        const pos = value as Record<string, unknown>;
+        if (pos && typeof pos === 'object' && 'lessonId' in pos && 'exerciseIndex' in pos) {
+          lastPositionsMap.set(key, {
+            lessonId: String(pos.lessonId),
+            exerciseIndex: Number(pos.exerciseIndex),
+            timestamp: pos.timestamp ? new Date(String(pos.timestamp)) : new Date(),
+          });
+        }
+      }
+      if (lastPositionsMap.size > 0) {
+        user.lastPositions = lastPositionsMap;
+      }
     }
 
     await user.save();
 
-    // Save progress history
+    // Save progress history - validate each record
     if (data.progressHistory && Array.isArray(data.progressHistory)) {
-      // Save new progress records (avoid duplicates)
       for (const record of data.progressHistory) {
+        if (!record.completedAt || !record.metrics) continue;
+
         const exists = await Progress.findOne({
           userId: user._id,
           completedAt: record.completedAt,

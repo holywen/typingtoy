@@ -91,7 +91,7 @@ export async function getTopPlayers(
   await connectDB();
 
   const entries = await LeaderboardModel.getTopPlayers(gameType, period, limit);
-  return entries as LeaderboardEntry[];
+  return entries as unknown as LeaderboardEntry[];
 }
 
 /**
@@ -143,7 +143,7 @@ export async function getFriendLeaderboard(
   const friendIds = user.friends.map(id => id.toString());
   const entries = await LeaderboardModel.getFriendsLeaderboard(playerId, friendIds, gameType, period);
 
-  return entries as LeaderboardEntry[];
+  return entries as unknown as LeaderboardEntry[];
 }
 
 /**

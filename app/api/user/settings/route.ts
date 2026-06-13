@@ -51,10 +51,19 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Merge new settings with existing settings
+    // Whitelist allowed settings fields to prevent mass assignment
+    const allowedSettings = ['keyboardLayout', 'soundEnabled', 'language', 'theme', 'showKeyboard', 'highlightErrors'];
+    const sanitizedSettings: Record<string, any> = {};
+    for (const key of allowedSettings) {
+      if (key in settings) {
+        sanitizedSettings[key] = settings[key];
+      }
+    }
+
+    // Merge validated settings with existing settings
     user.settings = {
       ...user.settings,
-      ...settings,
+      ...sanitizedSettings,
     };
 
     await user.save();

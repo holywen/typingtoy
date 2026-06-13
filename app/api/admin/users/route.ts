@@ -18,13 +18,15 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const role = searchParams.get('role') || '';
 
-    // Build query
+    // Build query - sanitize search to prevent NoSQL injection
     const query: any = {};
 
     if (search) {
+      // Escape regex special characters to prevent NoSQL injection via $regex
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { email: { $regex: search, $options: 'i' } },
-        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: escapedSearch, $options: 'i' } },
+        { name: { $regex: escapedSearch, $options: 'i' } },
       ];
     }
 

@@ -16,26 +16,22 @@ export async function POST() {
     // Connect to database
     await connectDB();
 
-    // Clear all Redis keys related to rooms and matchmaking
-    const keys = await redis.keys('*');
+    // Only clear room/matchmaking related keys - avoid broad key deletion
+    const keys = await redis.keys('room:*');
+    const matchmakingKeys = await redis.keys('matchmaking:*');
+    const queueKeys = await redis.keys('queue:*');
 
-    const roomKeys = keys.filter(key =>
-      key.startsWith('room:') ||
-      key.startsWith('player:') ||
-      key.startsWith('online:') ||
-      key.startsWith('matchmaking:') ||
-      key.startsWith('queue:')
-    );
+    const allKeys = [...keys, ...matchmakingKeys, ...queueKeys];
 
-    if (roomKeys.length > 0) {
-      await redis.del(...roomKeys);
+    if (allKeys.length > 0) {
+      await redis.del(...allKeys);
     }
 
     // Delete all rooms from database
     const result = await GameRoom.deleteMany({});
 
     console.log('🧹 Test cleanup completed:', {
-      redisKeysDeleted: roomKeys.length,
+      redisKeysDeleted: allKeys.length,
       roomsDeleted: result.deletedCount,
     });
 
@@ -43,7 +39,7 @@ export async function POST() {
       success: true,
       message: 'Test data cleaned up successfully',
       details: {
-        redisKeysDeleted: roomKeys.length,
+        redisKeysDeleted: allKeys.length,
         roomsDeleted: result.deletedCount,
       },
     });
