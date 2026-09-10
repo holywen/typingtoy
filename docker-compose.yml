@@ -42,6 +42,7 @@ services:
 
       # Node environment
       - NODE_ENV=production
+      - NODE_OPTIONS=--dns-result-order=ipv4first --network-family-autoselection-attempt-timeout=3000
     depends_on:
       - mongodb
       - redis
@@ -53,7 +54,7 @@ services:
 
   # MongoDB Database
   mongodb:
-    image: mongo:7.0-jammy
+    image: mongo:4.4
     container_name: typingtoy-mongodb
     restart: unless-stopped
     # Ports removed - only accessible within Docker network

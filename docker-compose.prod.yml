@@ -29,7 +29,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
 
       - NODE_ENV=production
-    restart: always
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -43,7 +43,7 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
-    restart: always
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -54,7 +54,7 @@ services:
           memory: 512M
 
   redis:
-    restart: always
+    restart: unless-stopped
     deploy:
       resources:
         limits:
