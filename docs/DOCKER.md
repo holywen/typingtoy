@@ -92,7 +92,7 @@ That's it! 🎉
 
 ### Optional Services
 
-Uncomment in `docker compose.yml` if needed:
+Uncomment in `docker-compose.yml` if needed:
 
 3. **redis** - Redis cache
    - Port: 6379
@@ -116,7 +116,7 @@ openssl rand -base64 32
 ```
 
 **Enable MongoDB authentication:**
-Uncomment in `docker compose.yml`:
+Uncomment in `docker-compose.yml`:
 ```yaml
 environment:
   MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
@@ -178,7 +178,7 @@ certbot renew --dry-run
 # or
 make prod
 # or
-docker compose -f docker compose.yml -f docker compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 ---
@@ -323,7 +323,7 @@ docker compose top
 
 ### Health Checks
 
-Add to `docker compose.yml`:
+Add to `docker-compose.yml`:
 
 ```yaml
 services:
@@ -382,7 +382,7 @@ services:
 
 ### Port already in use
 
-Change ports in `docker compose.yml`:
+Change ports in `docker-compose.yml`:
 
 ```yaml
 services:
@@ -449,7 +449,7 @@ docker compose up -d --build
 
 ```bash
 # Use development environment
-docker compose -f docker compose.yml -f docker compose.dev.yml up
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 # Features:
 # - Hot reload enabled
@@ -461,7 +461,7 @@ docker compose -f docker compose.yml -f docker compose.dev.yml up
 
 ```bash
 # Use production environment
-docker compose -f docker compose.yml -f docker compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 # Features:
 # - Optimized builds
@@ -488,17 +488,17 @@ Benefits:
 
 ## Environment-Specific Configurations
 
-### docker compose.yml (base)
+### docker-compose.yml (base)
 - Common configuration for all environments
 - Network setup
 - Volume definitions
 
-### docker compose.dev.yml (development)
+### docker-compose.dev.yml (development)
 - Development-specific overrides
 - Enable hot reload
 - Mount source code volumes
 
-### docker compose.prod.yml (production)
+### docker-compose.prod.yml (production)
 - Production-specific overrides
 - Resource limits
 - Security settings
