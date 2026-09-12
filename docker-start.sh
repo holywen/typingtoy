@@ -48,7 +48,7 @@ case $MODE in
         ;;
     "prod"|"production")
         echo "🏭 Starting in PRODUCTION mode..."
-        docker compose -f docker compose.yml -f docker compose.prod.yml up -d --build
+        docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
         ;;
     "stop")
         echo "🛑 Stopping all services..."
