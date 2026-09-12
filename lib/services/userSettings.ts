@@ -8,6 +8,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   language: 'en',
   soundEnabled: true,
   showKeyboard: true,
+  showHandDiagram: true,
   highlightErrors: true,
 };
 

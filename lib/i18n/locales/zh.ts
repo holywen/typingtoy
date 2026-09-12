@@ -147,7 +147,8 @@ export default {
     words: '词',
     newText: '换一篇',
     loadingText: '加载打字测试中...',
-    keyboardHints: '键盘与手指指引',
+    keyboardToggle: '键盘',
+    handGuideToggle: '手指指引',
     tipsTitle: '提高打字速度的技巧',
     tips: {
       positionTitle: '手指位置',

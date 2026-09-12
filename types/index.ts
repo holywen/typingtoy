@@ -101,5 +101,6 @@ export interface UserSettings {
   language: string;
   soundEnabled: boolean;
   showKeyboard: boolean;
+  showHandDiagram: boolean;
   highlightErrors: boolean;
 }
