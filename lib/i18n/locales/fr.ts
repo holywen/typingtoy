@@ -147,6 +147,7 @@ export default {
     words: 'mots',
     newText: 'Nouveau Texte',
     loadingText: 'Chargement du test de frappe...',
+    keyboardHints: 'Guide Clavier et Mains',
     tipsTitle: 'Conseils pour Mieux Taper',
     tips: {
       positionTitle: 'Position',

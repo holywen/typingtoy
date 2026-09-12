@@ -147,6 +147,7 @@ export default {
     words: 'palabras',
     newText: 'Nuevo Texto',
     loadingText: 'Cargando prueba de escritura...',
+    keyboardHints: 'Guía de Teclado y Manos',
     tipsTitle: 'Consejos para Escribir Mejor',
     tips: {
       positionTitle: 'Posición',

@@ -147,6 +147,7 @@ export default {
     words: 'คำ',
     newText: 'ข้อความใหม่',
     loadingText: 'กำลังโหลดการทดสอบ...',
+    keyboardHints: 'คู่มือแป้นพิมพ์และมือ',
     tipsTitle: 'เคล็ดลับสำหรับการพิมพ์ที่ดีขึ้น',
     tips: {
       positionTitle: 'ท่าที่นั่ง',
