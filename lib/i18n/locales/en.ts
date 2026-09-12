@@ -147,6 +147,7 @@ export default {
     words: 'words',
     newText: 'New Text',
     loadingText: 'Loading typing test...',
+    keyboardHints: 'Keyboard & Hand Guide',
     tipsTitle: 'Tips for Better Typing',
     tips: {
       positionTitle: 'Position',

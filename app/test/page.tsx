@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import TypingTest from '@/components/TypingTest';
 import Link from 'next/link';
 import { saveProgress } from '@/lib/services/progressStorage';
+import { getUserSettings, updateSetting } from '@/lib/services/userSettings';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { TypingSession } from '@/types';
 
@@ -13,10 +14,18 @@ export default function TestPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState<number>(0);
+  const [showKeyboardHints, setShowKeyboardHints] = useState(true);
 
   useEffect(() => {
     loadRandomText();
+    setShowKeyboardHints(getUserSettings().showKeyboard);
   }, []);
+
+  const toggleKeyboardHints = () => {
+    const newValue = !showKeyboardHints;
+    setShowKeyboardHints(newValue);
+    updateSetting('showKeyboard', newValue);
+  };
 
   const loadRandomText = async () => {
     setLoading(true);
@@ -52,9 +61,9 @@ export default function TestPage() {
           <div className="w-24"></div> {/* Spacer for centering */}
         </div>
 
-        {/* Word count and refresh button */}
+        {/* Word count, refresh button, and keyboard hints toggle */}
         {!loading && targetText && (
-          <div className="flex justify-center items-center gap-4 mb-4">
+          <div className="flex justify-center items-center gap-4 mb-4 flex-wrap">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               {wordCount} {t.test.words}
             </div>
@@ -64,6 +73,24 @@ export default function TestPage() {
             >
               🔄 {t.test.newText}
             </button>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+              <span>{t.test.keyboardHints}</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showKeyboardHints}
+                onClick={toggleKeyboardHints}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  showKeyboardHints ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    showKeyboardHints ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </label>
           </div>
         )}
 
@@ -89,6 +116,8 @@ export default function TestPage() {
           <TypingTest
             key={targetText} // Force re-render when text changes
             targetText={targetText}
+            showKeyboard={showKeyboardHints}
+            showHandDiagram={showKeyboardHints}
             onComplete={(session: TypingSession) => {
               saveProgress(session, 'speed_test');
               console.log('Test completed!', session);
