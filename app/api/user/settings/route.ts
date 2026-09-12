@@ -52,7 +52,7 @@ export async function PATCH(request: Request) {
     }
 
     // Whitelist allowed settings fields to prevent mass assignment
-    const allowedSettings = ['keyboardLayout', 'soundEnabled', 'language', 'theme', 'showKeyboard', 'highlightErrors'];
+    const allowedSettings = ['keyboardLayout', 'soundEnabled', 'language', 'theme', 'showKeyboard', 'showHandDiagram', 'highlightErrors'];
     const sanitizedSettings: Record<string, any> = {};
     for (const key of allowedSettings) {
       if (key in settings) {

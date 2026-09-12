@@ -14,17 +14,26 @@ export default function TestPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState<number>(0);
-  const [showKeyboardHints, setShowKeyboardHints] = useState(true);
+  const [showKeyboard, setShowKeyboard] = useState(true);
+  const [showHandDiagram, setShowHandDiagram] = useState(true);
 
   useEffect(() => {
     loadRandomText();
-    setShowKeyboardHints(getUserSettings().showKeyboard);
+    const settings = getUserSettings();
+    setShowKeyboard(settings.showKeyboard);
+    setShowHandDiagram(settings.showHandDiagram);
   }, []);
 
-  const toggleKeyboardHints = () => {
-    const newValue = !showKeyboardHints;
-    setShowKeyboardHints(newValue);
+  const toggleShowKeyboard = () => {
+    const newValue = !showKeyboard;
+    setShowKeyboard(newValue);
     updateSetting('showKeyboard', newValue);
+  };
+
+  const toggleShowHandDiagram = () => {
+    const newValue = !showHandDiagram;
+    setShowHandDiagram(newValue);
+    updateSetting('showHandDiagram', newValue);
   };
 
   const loadRandomText = async () => {
@@ -61,7 +70,7 @@ export default function TestPage() {
           <div className="w-24"></div> {/* Spacer for centering */}
         </div>
 
-        {/* Word count, refresh button, and keyboard hints toggle */}
+        {/* Word count, refresh button, and keyboard/hand guide toggles */}
         {!loading && targetText && (
           <div className="flex justify-center items-center gap-4 mb-4 flex-wrap">
             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -74,22 +83,12 @@ export default function TestPage() {
               🔄 {t.test.newText}
             </button>
             <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
-              <span>{t.test.keyboardHints}</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={showKeyboardHints}
-                onClick={toggleKeyboardHints}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  showKeyboardHints ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    showKeyboardHints ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+              <span>{t.test.keyboardToggle}</span>
+              <Switch checked={showKeyboard} onChange={toggleShowKeyboard} />
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+              <span>{t.test.handGuideToggle}</span>
+              <Switch checked={showHandDiagram} onChange={toggleShowHandDiagram} />
             </label>
           </div>
         )}
@@ -116,8 +115,8 @@ export default function TestPage() {
           <TypingTest
             key={targetText} // Force re-render when text changes
             targetText={targetText}
-            showKeyboard={showKeyboardHints}
-            showHandDiagram={showKeyboardHints}
+            showKeyboard={showKeyboard}
+            showHandDiagram={showHandDiagram}
             onComplete={(session: TypingSession) => {
               saveProgress(session, 'speed_test');
               console.log('Test completed!', session);
@@ -144,5 +143,25 @@ export default function TestPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+function Switch({ checked, onChange }: { checked: boolean; onChange: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+        checked ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+      }`}
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
   );
 }

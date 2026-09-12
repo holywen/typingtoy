@@ -147,7 +147,8 @@ export default {
     words: '単語',
     newText: '新しいテキスト',
     loadingText: 'タイピングテストを読み込んでいます...',
-    keyboardHints: 'キーボード＆手のガイド',
+    keyboardToggle: 'キーボード',
+    handGuideToggle: '手のガイド',
     tipsTitle: 'より良いタイピングのためのヒント',
     tips: {
       positionTitle: '位置',
